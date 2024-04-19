@@ -1,0 +1,2 @@
+In diesem Ordner werden durch die Skripte die Datensätze abgelegt, die auf Basis der Qualitätsberichte erzeugt werden.
+Die Rohdaten der Qualitätsberichte müssen in einem Unterordner "nobackup" abgelegt werden.

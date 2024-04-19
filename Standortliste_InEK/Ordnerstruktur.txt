@@ -1,0 +1,2 @@
+In diesem Ordner werden durch die Skripte die Datensätze abgelegt, die auf Basis der InEK-Daten erzeugt werden.
+Die Rohdaten des Standortverzeichnisses müssen in einem Unterordner "nobackup" abgelegt werden.
