@@ -51,3 +51,10 @@ rsconnect/
 
 # data Ordner, die nicht ins Repo sollen
 nobackup/
+
+# data files
+InEK_Krankenhausliste.RData
+Krankenhaeuser.csv
+Standorte_mit_Notfallstufe.csv
+Standorte_mit_Notfallstufe.RData
+Qualitaetsdaten.RData
