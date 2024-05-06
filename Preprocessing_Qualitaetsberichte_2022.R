@@ -41,7 +41,9 @@ for (i in file_list) {
   if (!is.null(neue_Qualidaten)) {
     neue_Qualidaten <-
       neue_Qualidaten[[1]]
+ 
     
+    # Standortdaten Krankenhaus mit mehreren Standorten   
     neue_Qualidaten_tibble <-
       tibble(
         IK = unlist(neue_Qualidaten$Krankenhaus$Mehrere_Standorte$Standortkontaktdaten$IK),
@@ -51,9 +53,9 @@ for (i in file_list) {
         Postleitzahl = unlist(neue_Qualidaten$Krankenhaus$Mehrere_Standorte$Standortkontaktdaten$Kontakt_Zugang$Postleitzahl),
         Ort = unlist(neue_Qualidaten$Krankenhaus$Mehrere_Standorte$Standortkontaktdaten$Kontakt_Zugang$Ort),
         Standortnummer = unlist(neue_Qualidaten$Krankenhaus$Mehrere_Standorte$Standortkontaktdaten$Standortnummer),
-        # Notfallstufe = neue_Qualidaten$Teilnahme_Notfallversorgung$Teilnahme_Notfallstufe
       )
     
+    # Standortdaten Krankenhaus mit einem Standort
     if (nrow(neue_Qualidaten_tibble) == 0) {
       neue_Qualidaten_tibble <-
         tibble(
@@ -64,20 +66,31 @@ for (i in file_list) {
           Postleitzahl = unlist(neue_Qualidaten$Krankenhaus$Ein_Standort$Krankenhauskontaktdaten$Kontakt_Zugang$Postleitzahl),
           Ort = unlist(neue_Qualidaten$Krankenhaus$Ein_Standort$Krankenhauskontaktdaten$Kontakt_Zugang$Ort),
           Standortnummer = unlist(neue_Qualidaten$Krankenhaus$Ein_Standort$Krankenhauskontaktdaten$Standortnummer),
-          # Notfallstufe = neue_Qualidaten$Teilnahme_Notfallversorgung$Teilnahme_Notfallstufe
         )
     }
     
     neue_Qualidaten_tibble <- 
       neue_Qualidaten_tibble |> 
-      mutate(Notfallstufe = list(listnames_recursive(neue_Qualidaten$Teilnahme_Notfallversorgung$Teilnahme_Notfallstufe)))
+      mutate(
+        Notfallstufe = list(listnames_recursive(neue_Qualidaten$Teilnahme_Notfallversorgung$Teilnahme_Notfallstufe)),
+        Betten = unlist(neue_Qualidaten$Anzahl_Betten),
+        Vollstationaere_Fallzahl = unlist(neue_Qualidaten$Fallzahlen$Vollstationaere_Fallzahl), 
+        Teilstationaere_Fallzahl = unlist(neue_Qualidaten$Fallzahlen$Teilstationaere_Fallzahl), 
+        Ambulante_Fallzahl = unlist(neue_Qualidaten$Fallzahlen$Ambulante_Fallzahl), 
+        StaeB_Fallzahl = unlist(neue_Qualidaten$Fallzahlen$StaeB_Fallzahl)
+        )
   }
   
   Qualitaetsdaten <- bind_rows(Qualitaetsdaten, neue_Qualidaten_tibble)
   
 }
 
+
 Qualitaetsdaten <- 
+  Qualitaetsdaten |> 
+  mutate(across(Betten:StaeB_Fallzahl, as.integer))
+
+tmp <- 
   Qualitaetsdaten |> 
   unnest_longer(Notfallstufe) |> 
   mutate(
@@ -89,6 +102,15 @@ Qualitaetsdaten <-
                  "Umfassende_Notfallversorgung_Stufe_3" ~ 3L,
                  .default = NA)
     ) |> 
-  filter(!is.na(Notfallstufe))
+  filter(!is.na(Notfallstufe)) |> 
+    select(Standortnummer, Notfallstufe)
+
+Qualitaetsdaten <- 
+  Qualitaetsdaten |> 
+  select(-Notfallstufe) |>
+  left_join(tmp, by = "Standortnummer") |> 
+  select(-Standortnummer)
+
+
 
 save(Qualitaetsdaten, file = file.path("Qualitaetsberichte", "Qualitaetsdaten.RData"))
