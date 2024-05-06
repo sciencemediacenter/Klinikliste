@@ -133,8 +133,11 @@ Standorte <-
     .funs = as.numeric
   ) |>
   select(-N, -Einrichtung_id) |>
-  filter(Version == max(Version), 
-         .by = "Einrichtung_Standortnummer") # filter alte Versionen
+  filter(
+    is.na(Einrichtung_GültigBis) | Einrichtung_GültigBis > today()) |> 
+  filter(
+    Version == max(Version), 
+    .by = "Einrichtung_Standortnummer") # filter alte Versionen
 
 save(
   Krankenhaeuser,
