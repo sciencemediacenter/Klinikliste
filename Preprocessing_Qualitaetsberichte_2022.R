@@ -2,6 +2,7 @@
 
 library(xml2)
 library(tidyverse)
+library(rvest)
 
 ## workspace directory und filename
 if(rstudioapi::isAvailable()) {
@@ -14,6 +15,12 @@ file_list <- list.files(path)
 file_list <- file_list[str_ends(file_list, pattern = "xml.xml")]
 file_list <- unique(str_extract(file_list, "[0-9\\-]*(?=\\-2022\\-)"))
 Jahr <- 2022
+
+
+## kann uebersprungen werden, wenn keine Daten aus den das.xml benoetigt werden
+source(file.path("Qualitaetsberichte", "Preprocessing_das-files.R"))
+
+## Funktion um die Namen der verschachtelten XML zu extrahieren
 
 listnames_recursive <- function(x) {
   return <- character(5)
@@ -90,6 +97,10 @@ Qualitaetsdaten <-
   Qualitaetsdaten |> 
   mutate(across(Betten:StaeB_Fallzahl, as.integer))
 
+# Qualitaetsdaten |> 
+#   unnest_longer(Notfallstufe) |> 
+#   filter(Notfallstufe == "Notfallstufe_Nichtteilnahme_noch_nicht_vereinbart") |> view()
+
 tmp <- 
   Qualitaetsdaten |> 
   unnest_longer(Notfallstufe) |> 
@@ -108,8 +119,7 @@ tmp <-
 Qualitaetsdaten <- 
   Qualitaetsdaten |> 
   select(-Notfallstufe) |>
-  left_join(tmp, by = "Standortnummer") |> 
-  select(-Standortnummer)
+  left_join(tmp, by = "Standortnummer")
 
 
 

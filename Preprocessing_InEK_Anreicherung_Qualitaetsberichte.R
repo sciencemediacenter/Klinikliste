@@ -20,13 +20,16 @@ Qualitaetsdaten_Notfallstufen <-
   select(Standortnummer, Notfallstufe, Name_Qualitaetsbericht = Name) |>
   ##########
 mutate(
-  Standortnummer = 
-    case_when( # fix falsche Standortnummern in Qualitaetsberichten 2022
+  Standortnummer =
+    case_when(
+      # fix falsche Standortnummern in Qualitaetsberichten 2022
       Standortnummer == "770001000" ~ "773274000",
       Standortnummer == "770002000" ~ "773562000",
       Standortnummer == "770004000" ~ "773563000",
       Standortnummer == "770000000" ~ "773783000",
-      .default =  Standortnummer)) 
+      .default =  Standortnummer
+    )
+)
 ##########
 
 Standorte_Notfallstufe <-
