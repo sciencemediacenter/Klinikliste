@@ -15,9 +15,11 @@ if (rstudioapi::isAvailable()) {
 load(file.path("Standortliste_InEK", "InEK_Krankenhausliste.RData"))
 load(file.path("Qualitaetsberichte", "Qualitaetsdaten.RData"))
 
+colnames(qualitaetsdaten) <- tools::toTitleCase(colnames(qualitaetsdaten))
+
 Qualitaetsdaten_Notfallstufen <-
-  Qualitaetsdaten |>
-  select(Standortnummer, Notfallstufe, Name_Qualitaetsbericht = Name) |>
+  qualitaetsdaten |>
+  # select(Standortnummer, Notfallstufe, Name_Qualitaetsbericht = Name) |>
   ##########
 mutate(
   Standortnummer =
@@ -42,7 +44,7 @@ Standorte_Notfallstufe |>
   filter(Notfallstufe >= 0,
          is.na(Version)) |>
   select(ReferenzKrankenhaus_IK, Einrichtung_Standortnummer) |>
-  left_join(Qualitaetsdaten,
+  left_join(qualitaetsdaten,
             by = c(Einrichtung_Standortnummer = "Standortnummer"))
 
 ## Entferne Notfallstufen ohne InEK match
@@ -52,8 +54,8 @@ Standorte_Notfallstufe <-
   filter(!is.na(Version))
 
 ## Validierung Kliniken ohne Notfallstufe
-Standorte_Notfallstufe |> 
-  filter(Einrichtung_Einrichtungstyp == "00", 
+Standorte_Notfallstufe |>
+  filter(Einrichtung_Einrichtungstyp == "00",
          is.na(Notfallstufe),
          is.na(GültigBis) | GültigBis >= today())
 

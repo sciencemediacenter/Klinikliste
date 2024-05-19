@@ -30,10 +30,18 @@ Weitere Informationen zu den Daten finden sich im [Handbuch des Standortverzeich
 
 ### Qualitätsberichte des G-BA
 
-Die Daten der Qualitätsberichte können auf den Seiten des [Gemeinsamen Bundesausschuss (G-BA)](https://qb-referenzdatenbank.g-ba.de/#/login) beantragt und heruntergeladen werden. Der aktuelle Datenstand sind die Berichte des Jahres 2022. Diese Daten können mit dem Skript Preprocessing_Qualitaetsberichte_2022.R eingelesen werden. Aktuell werden nur die Notfallstufen aus den Qualitätsberichten extrahiert, das Skript drf aber gerne erweitert werden.
+Die Daten der Qualitätsberichte können auf den Seiten des [Gemeinsamen Bundesausschuss (G-BA)](https://qb-referenzdatenbank.g-ba.de/#/login) beantragt und heruntergeladen werden. Der aktuelle Datenstand sind die Berichte des Jahres 2022. Diese Daten können mit dem Skript Preprocessing_Qualitaetsberichte_2022.R eingelesen werden. Aktuell werden 
+die Bettenzahl und die verschiedenen Notfallstufen aus den 
+Qualitätsberichten extrahiert, das Skript darf aber gerne erweitert 
+werden.
 
 * Da das Berichtsjahr der aktuellen Qualitätsberichte ein bis zwei Jahre in der Vergangenheit liegt, können Angaben veraltet sein und müssen ggf. auf Aktualität geprüft weren.
-* Bei einer kleinen einstelligen Zahl an Standorten war aufgrund von fehlenden / fehlerhaften Standortnummern eine automatische Zuordnung nicht möglich. Diese wurden händisch eingepflegt. Die Änderungen können im Preprocessing-Skript eingesehen werden.
+* Bei einer kleinen einstelligen Zahl an Standorten war aufgrund von fehlenden / fehlerhaften Standortnummern eine automatische Zuordnung nicht möglich. Diese wurden händisch eingepflegt. Die Änderungen können im Preprocessing-Skript eingesehen werden.  
+* Einige Angaben für die Teilnahme an der Notfallversorgung erscheinen
+nicht plausibel bzw. sind anscheinend nicht vollständig in den
+Qualitätsberichten dokumentiert. Bspw. haben mehrfach große
+Universitätskliniken keine Chest Pain Unit oder Stroke Unit,
+was Angaben verschiedener Zertifizierungsstellen widerspricht.  
 
 
 Bei einer Verwendung von Daten aus den Qualitätsberichten sind die [Allgemeinen Nutzungsbedingungen des G-BA](https://qb-datenportal.g-ba.de/assets/ANB_Nutzung_Qualit%C3%A4tsberichte.pdf) zu beachten. 
