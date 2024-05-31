@@ -173,6 +173,8 @@ get_spezialversorgung_code <-
 
 read_qualitaetsberichte_xml_prozeduren <- 
   function(file_path){
+    require(xml2)
+    require(tidyverse)
     xml_data <- read_xml(file_path)
     mehrere_standorte <- length(xml_children(xml_find_all(xml_data, "//Krankenhaus/Mehrere_Standorte"))) == 2
     kh_path <- ifelse(mehrere_standorte, "Standortkontaktdaten", "Krankenhauskontaktdaten")
