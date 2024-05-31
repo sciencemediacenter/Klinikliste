@@ -4,6 +4,7 @@ library(tidyverse)
 library(stringr)
 library(xml2)
 library(pbapply)
+library(parallel)
 
 ## workspace directory und filename
 if (rstudioapi::isAvailable()) {
@@ -30,7 +31,13 @@ save(qualitaetsdaten,
 
 # Lese Prozeduren ein ---------------------------------------------
 
-Fallzahlen_Prozeduren <- pblapply(xml_files, read_qualitaetsberichte_xml_prozeduren)
+cl <- makeCluster(detectCores()-2)
+
+Fallzahlen_Prozeduren <- parLapply(cl, xml_files, read_qualitaetsberichte_xml_prozeduren)
+
+stopCluster(cl)
+
+
 Fallzahlen_Prozeduren <- 
   bind_rows(Fallzahlen_Prozeduren) |> 
   select(-Anzahl_Datenschutz) |> 
