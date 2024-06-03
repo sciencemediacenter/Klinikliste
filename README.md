@@ -15,12 +15,17 @@ Das Projekt soll kooperativ sein. Ihr seid herzlich eingeladen dazu beizutragen,
 ### InEK Standortverzeichnis
 
 Kern der Datensammlung ist das [Standortverzeichnis](https://krankenhausstandorte.de/) des Instituts für das Entgeltsystem im Krankenhaus GmbH (InEK). Nach einer Registrierung können die Daten als XML-file heruntergeladen werden. Dabei kann das vollständige oder nur das aktuelle Verzeichnis heruntergeladen werden.  Das R-Skript Preprocessing_InEK_Krankenhausstandorte.R ermöglicht das Einlesen der Daten und das Umformatieren in Rechteckdaten.
+Zusätzlich werden einige der unten stehenden Datenprobleme behandelt.
 
 * Die Daten werden im Standortverzeichnis wöchentlich aktualisiert.
 * das Verzeichnis enthält eine Liste mit Krankenhäusern (mit mehreren Standorten).
 * Das Verzeichnis enthält pro Standort eine oder mehrere Einrichtungen. Werden nur die Standorte benötigt, muss nach Einrichtung_Einrichtungstyp == "00" gefiltert werden.
 * Die übrigen Einrichtungen enthalten Ambulanzen und Tageskliniken.
 * Auch der aktuelle Datensatz enthält bereits nicht mehr gültige Einträge. Variablen mit Gültigkeitszeiträumen finden sich im Datensatz auf Standort-Ebene, auf Einrichtungs-Ebene und bei der Betriebstättennummer und müssen bei Bedarf beachtet werden.
+* Die Daten enthalten für einige Einrichtungen mehrere Versionen.
+* Nicht immer ist die neueste Version die aktuell gültige.
+* Einige Einrichtungen enthalten keinen gültigen Eintrag mehr, obwohl sie noch aktiv sind.
+* Die Versionsnummer für die Einrichtungen ist nicht immer unique.
 * Geokoordinaten existieren auf Standort- und auf Einrichtungsebene.
 * Die 6-stellige StandortId beginnt immer mit 77 und ist für jeden Standort eindeutig.
 * Jede Einrichtung hat noch eine 9-stellige Standortnummer. Diese besteht aus der StandortId, gefolgt von einer 0 und den zwei Ziffern des Einrichtungstyps.

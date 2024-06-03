@@ -133,11 +133,19 @@ Standorte <-
     .funs = as.numeric
   ) |>
   select(-N, -Einrichtung_id) |>
+  filter(Einrichtung_Einrichtungstyp == "00") |> # Standorte, keine Ambulanzen etc.
+  mutate(gueltiger_eintrag = any(is.na(Einrichtung_GültigBis) | Einrichtung_GültigBis > today()),
+         .by = "Einrichtung_Standortnummer") |> # gueltiger Eintrag vorhanden?
   filter(
-    is.na(Einrichtung_GültigBis) | Einrichtung_GültigBis > today()) |> 
+    !gueltiger_eintrag | 
+      is.na(Einrichtung_GültigBis) | 
+      Einrichtung_GültigBis > today()
+    ) |> # wenn gueltige Eintraege vorhanden sind, dann nur diese filtern
   filter(
-    Version == max(Version), 
-    .by = "Einrichtung_Standortnummer") # filter alte Versionen
+    Version == max(Version),
+    .by = "Einrichtung_Standortnummer") |> # filter alte Versionen raus
+  distinct(Einrichtung_Standortnummer, .keep_all = TRUE) |>  # zum Teil Versionsnummern mehrfach vergeben
+  select(-gueltiger_eintrag)
 
 save(
   Krankenhaeuser,
