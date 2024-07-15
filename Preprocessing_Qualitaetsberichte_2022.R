@@ -46,3 +46,23 @@ Fallzahlen_Prozeduren <-
 # Save data -------------------------------------------------------
 save(Fallzahlen_Prozeduren,
      file = file.path("Qualitaetsberichte", "Fallzahlen_Prozeduren.Rdata"))
+
+
+
+# Lese Diagnosen ein ---------------------------------------------
+
+cl <- makeCluster(detectCores()-2)
+
+Fallzahlen_Diagnosen <- parLapply(cl, xml_files, read_qualitaetsberichte_xml_diagnosen)
+
+stopCluster(cl)
+
+
+Fallzahlen_Diagnosen <- 
+  bind_rows(Fallzahlen_Diagnosen) |> 
+  select(-Fallzahl_Datenschutz) |>
+  mutate(Fallzahl = as.numeric(Fallzahl))
+
+# Save data -------------------------------------------------------
+save(Fallzahlen_Diagnosen,
+     file = file.path("Qualitaetsberichte", "Fallzahlen_Diagnosen.Rdata"))
