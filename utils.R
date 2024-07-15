@@ -255,6 +255,30 @@ read_qualitaetsberichte_xml_diagnosen <-
   }
 
 
+read_qualitaetsberichte_xml_medizinisches_leistungsangebot <- 
+  function(file_path){
+    require(xml2)
+    require(tidyverse)
+  
+    xml_data <- read_xml(file_path)
+    mehrere_standorte <- length(xml_children(xml_find_all(xml_data, "//Krankenhaus/Mehrere_Standorte"))) == 2
+    kh_path <- ifelse(mehrere_standorte, "Standortkontaktdaten", "Krankenhauskontaktdaten")
+    
+    IK <- xml_text(xml_find_all(xml_data, glue::glue("//{kh_path}/IK")))
+    Standortnummer <- xml_text(xml_find_all(xml_data, glue::glue("//Standortnummer")))
+    
+    medizinisches_leistungsangebot <- xml_find_all(xml_data, "//Medizinisches_Leistungsangebot")
+    tmp <- lapply(medizinisches_leistungsangebot, xml_children)
+    tmp <- lapply(tmp, function(x) tibble(!!!setNames(xml_text(x), xml_name(x))))
+    
+    prozedurliste <- bind_cols(
+      IK = IK,
+      Standortnummer = Standortnummer,
+      bind_rows(tmp)
+    )
+    
+    return(prozedurliste)
+  }
 
 
 

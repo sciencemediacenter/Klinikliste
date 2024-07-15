@@ -66,3 +66,22 @@ Fallzahlen_Diagnosen <-
 # Save data -------------------------------------------------------
 save(Fallzahlen_Diagnosen,
      file = file.path("Qualitaetsberichte", "Fallzahlen_Diagnosen.Rdata"))
+
+
+
+
+# Lese Medizinisches Leistungsanbeot ein ---------------------------------------------
+
+cl <- makeCluster(detectCores()-2)
+
+Medizinisches_Leistungsangebot <- parLapply(cl, xml_files, read_qualitaetsberichte_xml_medizinisches_leistungsangebot)
+
+stopCluster(cl)
+
+
+Medizinisches_Leistungsangebot <- 
+  bind_rows(Medizinisches_Leistungsangebot) 
+
+# Save data -------------------------------------------------------
+save(Medizinisches_Leistungsangebot,
+     file = file.path("Qualitaetsberichte", "Medizinisches_Leistungsangebot.Rdata"))
