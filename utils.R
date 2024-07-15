@@ -175,6 +175,22 @@ read_qualitaetsberichte_xml_prozeduren <-
   function(file_path){
     require(xml2)
     require(tidyverse)
+    
+    extract_orgaeinheit <-
+      function(einzelne_prozedur) {
+        orgaeinheit_node <- xml_parents(einzelne_prozedur)[4] # go back to <Organisationseinheit-Fachabteilung>
+        
+        column_names <- c(xml_name(einzelne_prozedur), "OrgaEinheit_Nummer", "OrgaEinheit_Name")
+        column_values <- c(xml_text(einzelne_prozedur), 
+                           xml_text(xml_find_all(orgaeinheit_node, "Gliederungsnummer")),
+                           xml_text(xml_find_all(orgaeinheit_node, "Name")))
+        
+        named_values <- setNames(column_values, column_names)
+        tib <- tibble(!!!named_values)
+        
+        return(tib)
+      }
+    
     xml_data <- read_xml(file_path)
     mehrere_standorte <- length(xml_children(xml_find_all(xml_data, "//Krankenhaus/Mehrere_Standorte"))) == 2
     kh_path <- ifelse(mehrere_standorte, "Standortkontaktdaten", "Krankenhauskontaktdaten")
@@ -184,7 +200,8 @@ read_qualitaetsberichte_xml_prozeduren <-
     
     prozedur <- xml_find_all(xml_data, "//Prozedur")
     tmp <- lapply(prozedur, xml_children)
-    tmp <- lapply(tmp, function(x) tibble(!!!setNames(xml_text(x), xml_name(x))))
+    tmp <- lapply(tmp, extract_orgaeinheit)
+    # tmp <- lapply(tmp, function(x) tibble(!!!setNames(xml_text(x), xml_name(x))))
     
     prozedurliste <- bind_cols(
       IK = IK,
