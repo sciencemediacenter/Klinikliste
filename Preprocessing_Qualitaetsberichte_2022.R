@@ -5,6 +5,7 @@ library(stringr)
 library(xml2)
 library(pbapply)
 library(parallel)
+library(glue)
 
 ## workspace directory und filename
 if (rstudioapi::isAvailable()) {
@@ -13,10 +14,12 @@ if (rstudioapi::isAvailable()) {
 
 source("utils.R")
 
+jahr <- "2021"
+
 xml_files <-
   get_qb_xml_files(
-    file_path = file.path("Qualitaetsberichte", "nobackup", "xml_2022"),
-    pattern = "2022-xml\\.xml$"
+    file_path = file.path("Qualitaetsberichte", "nobackup", glue("xml_{jahr}")),
+    pattern = glue("{jahr}-xml\\.xml$")
   )
 
 # Lese Qualitätsberichte ein --------------------------------------
@@ -25,7 +28,7 @@ qualitaetsdaten <- bind_rows(qualitaetsdaten)
 
 # Save data -------------------------------------------------------
 save(qualitaetsdaten,
-     file = file.path("Qualitaetsberichte", "Qualitaetsdaten.Rdata"))
+     file = file.path("Qualitaetsberichte", glue("Qualitaetsdaten_{jahr}.Rdata")))
 
 
 
@@ -45,7 +48,7 @@ Fallzahlen_Prozeduren <-
 
 # Save data -------------------------------------------------------
 save(Fallzahlen_Prozeduren,
-     file = file.path("Qualitaetsberichte", "Fallzahlen_Prozeduren.Rdata"))
+     file = file.path("Qualitaetsberichte", glue("Fallzahlen_Prozeduren_{jahr}.Rdata")))
 
 
 
@@ -65,7 +68,7 @@ Fallzahlen_Diagnosen <-
 
 # Save data -------------------------------------------------------
 save(Fallzahlen_Diagnosen,
-     file = file.path("Qualitaetsberichte", "Fallzahlen_Diagnosen.Rdata"))
+     file = file.path("Qualitaetsberichte", glue("Fallzahlen_Diagnosen_{jahr}.Rdata")))
 
 
 
@@ -84,4 +87,4 @@ Medizinisches_Leistungsangebot <-
 
 # Save data -------------------------------------------------------
 save(Medizinisches_Leistungsangebot,
-     file = file.path("Qualitaetsberichte", "Medizinisches_Leistungsangebot.Rdata"))
+     file = file.path("Qualitaetsberichte", glue("Medizinisches_Leistungsangebot_{jahr}.Rdata")))
