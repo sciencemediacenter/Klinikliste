@@ -277,8 +277,44 @@ read_qualitaetsberichte_xml_medizinisches_leistungsangebot <-
       bind_rows(tmp)
     )
     
-    return(prozedurliste)
+
+read_qualitaetsberichte_xml_fachabteilungsschluessel <- 
+  function(file_path){
+    require(xml2)
+    require(tidyverse)
+    
+    extract_orgaeinheit <-
+      function(einzelner_fachabteilungsschluessel) {
+        orgaeinheit_node <- xml_parents(einzelner_fachabteilungsschluessel)[2] # go back to <Organisationseinheit-Fachabteilung>
+        
+        column_names <- c(xml_name(einzelner_fachabteilungsschluessel), "OrgaEinheit_Nummer", "OrgaEinheit_Name")
+        column_values <- c(xml_text(einzelner_fachabteilungsschluessel), 
+                           xml_text(xml_find_all(orgaeinheit_node, "Gliederungsnummer")),
+                           xml_text(xml_find_all(orgaeinheit_node, "Name")))
+        
+        named_values <- setNames(column_values, column_names)
+        tib <- tibble(!!!named_values)
+        
+        return(tib)
+      }
+    
+    xml_data <- read_xml(file_path)
+    mehrere_standorte <- length(xml_children(xml_find_all(xml_data, "//Krankenhaus/Mehrere_Standorte"))) == 2
+    kh_path <- ifelse(mehrere_standorte, "Standortkontaktdaten", "Krankenhauskontaktdaten")
+    
+    IK <- xml_text(xml_find_all(xml_data, glue::glue("//{kh_path}/IK")))
+    Standortnummer <- xml_text(xml_find_all(xml_data, glue::glue("//Standortnummer")))
+    
+    fachabteilungsschluessel <- xml_find_all(xml_data, "//Fachabteilungsschluessel")
+    tmp <- lapply(fachabteilungsschluessel, xml_children)
+    tmp <- lapply(tmp, extract_orgaeinheit)
+    # tmp <- lapply(tmp, function(x) tibble(!!!setNames(xml_text(x), xml_name(x))))
+    
+    fachabteilungsschluesselliste <- bind_cols(
+      IK = IK,
+      Standortnummer = Standortnummer,
+      bind_rows(tmp)
+    )
+    
+    return(fachabteilungsschluesselliste)
   }
-
-
-

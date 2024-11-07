@@ -14,7 +14,7 @@ if (rstudioapi::isAvailable()) {
 
 source("utils.R")
 
-jahr <- "2021"
+jahr <- "2022"
 
 xml_files <-
   get_qb_xml_files(
@@ -88,3 +88,27 @@ Medizinisches_Leistungsangebot <-
 # Save data -------------------------------------------------------
 save(Medizinisches_Leistungsangebot,
      file = file.path("Qualitaetsberichte", glue("Medizinisches_Leistungsangebot_{jahr}.Rdata")))
+
+
+
+# Lese Fachabteilungsschluessel ein ---------------------------------------------
+
+cl <- makeCluster(detectCores()-2)
+
+Fachabteilungsschluessel <- parLapply(cl, xml_files, read_qualitaetsberichte_xml_fachabteilungsschluessel)
+
+
+stopCluster(cl)
+
+
+Fachabteilungsschluessel <- 
+  bind_rows(Fachabteilungsschluessel) 
+
+# Save data -------------------------------------------------------
+save(Fachabteilungsschluessel,
+     file = file.path("Qualitaetsberichte", glue("Fachabteilungsschluessel_{jahr}.Rdata")))
+
+
+
+
+
