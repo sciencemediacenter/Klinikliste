@@ -259,7 +259,22 @@ read_qualitaetsberichte_xml_medizinisches_leistungsangebot <-
   function(file_path){
     require(xml2)
     require(tidyverse)
-  
+
+    extract_orgaeinheit <-
+      function(einzelnes_medizinisches_leistungsangebot) {
+        orgaeinheit_node <- xml_parents(einzelnes_medizinisches_leistungsangebot)[3] # go back to <Organisationseinheit-Fachabteilung>
+        
+        column_names <- c(xml_name(einzelnes_medizinisches_leistungsangebot), "OrgaEinheit_Nummer", "OrgaEinheit_Name")
+        column_values <- c(xml_text(einzelnes_medizinisches_leistungsangebot), 
+                           xml_text(xml_find_all(orgaeinheit_node, "Gliederungsnummer")),
+                           xml_text(xml_find_all(orgaeinheit_node, "Name")))
+        
+        named_values <- setNames(column_values, column_names)
+        tib <- tibble(!!!named_values)
+        
+        return(tib)
+      }
+    
     xml_data <- read_xml(file_path)
     mehrere_standorte <- length(xml_children(xml_find_all(xml_data, "//Krankenhaus/Mehrere_Standorte"))) == 2
     kh_path <- ifelse(mehrere_standorte, "Standortkontaktdaten", "Krankenhauskontaktdaten")
@@ -269,14 +284,18 @@ read_qualitaetsberichte_xml_medizinisches_leistungsangebot <-
     
     medizinisches_leistungsangebot <- xml_find_all(xml_data, "//Medizinisches_Leistungsangebot")
     tmp <- lapply(medizinisches_leistungsangebot, xml_children)
-    tmp <- lapply(tmp, function(x) tibble(!!!setNames(xml_text(x), xml_name(x))))
+    tmp <- lapply(tmp, extract_orgaeinheit)
+    # tmp <- lapply(tmp, function(x) tibble(!!!setNames(xml_text(x), xml_name(x))))
     
-    prozedurliste <- bind_cols(
+    medizinisches_leistungsangebot_liste <- bind_cols(
       IK = IK,
       Standortnummer = Standortnummer,
       bind_rows(tmp)
     )
     
+    return(medizinisches_leistungsangebot_liste)
+  }
+
 
 read_qualitaetsberichte_xml_fachabteilungsschluessel <- 
   function(file_path){
