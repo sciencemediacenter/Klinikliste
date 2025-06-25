@@ -16,7 +16,7 @@ if (rstudioapi::isAvailable()) {
 
 source("../utils.R")
 
-Jahr <- 2021
+Jahr <- 2022
 
 path <- file.path("nobackup", glue("xml_{Jahr}"))
 
@@ -48,10 +48,15 @@ for (i in file_list) {
     html_element(neue_Dokdaten_xml, "Standortnummer") |>
     html_text()
 
-  Leistungsbereich <- html_elements(neue_Dokdaten_xml, xpath = ".//Leistungsbereich_DeQS")
+  Leistungsbereich <- html_elements(
+    neue_Dokdaten_xml,
+    xpath = ".//Leistungsbereich_DeQS"
+  )
 
-  Leistungsbereich <-  bind_rows(lapply(Leistungsbereich, function(x)
-    tibble(Leistungsbereich = list(x))))
+  Leistungsbereich <- bind_rows(lapply(
+    Leistungsbereich,
+    function(x) tibble(Leistungsbereich = list(x))
+  ))
 
   table_Dokdaten <-
     Leistungsbereich |>
@@ -61,11 +66,20 @@ for (i in file_list) {
       Kuerzel = extract_html_element(Leistungsbereich, "Kuerzel"),
       Bezeichnung = extract_html_element(Leistungsbereich, "Bezeichnung"),
       Fallzahl = extract_html_element(Leistungsbereich, "Fallzahl"),
-      Dokumentationsrate = extract_html_element(Leistungsbereich, "Dokumentationsrate"),
-      Anzahl_Datensaetze_Standort = extract_html_element(Leistungsbereich, "Anzahl_Datensaetze_Standort")
+      Dokumentationsrate = extract_html_element(
+        Leistungsbereich,
+        "Dokumentationsrate"
+      ),
+      Anzahl_Datensaetze_Standort = extract_html_element(
+        Leistungsbereich,
+        "Anzahl_Datensaetze_Standort"
+      )
     )
 
-  Qualitaetsdaten_das_files <- bind_rows(Qualitaetsdaten_das_files, table_Dokdaten)
+  Qualitaetsdaten_das_files <- bind_rows(
+    Qualitaetsdaten_das_files,
+    table_Dokdaten
+  )
 }
 
 Qualitaetsdaten_das_files <-
