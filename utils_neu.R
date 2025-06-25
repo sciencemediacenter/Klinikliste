@@ -174,180 +174,258 @@ read_qualitaetsberichte_xml <- function(file_path, debugmode = FALSE) {
 #' Liest für jede Organisationseinheit die Fallzahlen der Prozeduren.
 #' @param file_path character, Pfad zur XML-Datei
 #' @return tibble mit Spalten: IK, Standortnummer, <Prozedurname>, OrgaEinheit_Nummer, OrgaEinheit_Name
-read_qualitaetsberichte_xml_prozeduren <- function(file_path) {
-  xml_data <- read_xml(file_path)
-  kh_path <- get_kh_path(xml_data)
+read_qualitaetsberichte_xml_prozeduren <-
+  function(file_path) {
+    extract_orgaeinheit <-
+      function(einzelne_prozedur) {
+        orgaeinheit_node <- xml_parents(einzelne_prozedur)[4] # go back to <Organisationseinheit-Fachabteilung>
 
-  IK <- xml_data %>% xml_find_all(glue::glue("//{kh_path}/IK")) %>% xml_text()
-  Standortnummer <- xml_data %>% xml_find_all("//Standortnummer") %>% xml_text()
+        column_names <- c(
+          xml_name(einzelne_prozedur),
+          "OrgaEinheit_Nummer",
+          "OrgaEinheit_Name"
+        )
+        column_values <- c(
+          xml_text(einzelne_prozedur),
+          xml_text(xml_find_all(orgaeinheit_node, "Gliederungsnummer")),
+          xml_text(xml_find_all(orgaeinheit_node, "Name"))
+        )
 
-  # Alle <Prozedur>-Nodes finden
-  prozeduren <- xml_find_all(xml_data, "//Prozedur")
-  if (length(prozeduren) == 0) {
-    # Falls keine Prozeduren: leeres tibble zurückgeben
-    return(tibble(
-      IK = IK,
-      Standortnummer = Standortnummer
-      # keine weiteren Spalten
-    ))
-  }
+        named_values <- setNames(column_values, column_names)
+        tib <- tibble(!!!named_values)
 
-  # Für jede Prozedur ein tibble erzeugen
-  extract_orgaeinheit <- function(node_proz) {
-    # Wir steigen 4 Ebenen auf zur <Organisationseinheit-Fachabteilung>
-    orga_node <- xml_parents(node_proz)[[4]]
-    spalten_name <- xml_name(node_proz)
-    spalten_wert <- xml_text(node_proz)
-    orga_nummer <- xml_find_first(orga_node, "Gliederungsnummer") %>% xml_text()
-    orga_name <- xml_find_first(orga_node, "Name") %>% xml_text()
+        return(tib)
+      }
 
-    tibble(
-      !!spalten_name := spalten_wert,
-      OrgaEinheit_Nummer = orga_nummer,
-      OrgaEinheit_Name = orga_name
+    xml_data <- read_xml(file_path)
+    mehrere_standorte <- length(xml_children(xml_find_all(
+      xml_data,
+      "//Krankenhaus/Mehrere_Standorte"
+    ))) ==
+      2
+    kh_path <- ifelse(
+      mehrere_standorte,
+      "Standortkontaktdaten",
+      "Krankenhauskontaktdaten"
     )
+
+    IK <- xml_text(xml_find_all(xml_data, glue::glue("//{kh_path}/IK")))
+    Standortnummer <- xml_text(xml_find_all(
+      xml_data,
+      glue::glue("//Standortnummer")
+    ))
+
+    prozedur <- xml_find_all(xml_data, "//Prozedur")
+    tmp <- lapply(prozedur, xml_children)
+    tmp <- lapply(tmp, extract_orgaeinheit)
+    # tmp <- lapply(tmp, function(x) tibble(!!!setNames(xml_text(x), xml_name(x))))
+
+    prozedurliste <- bind_cols(
+      IK = IK,
+      Standortnummer = Standortnummer,
+      bind_rows(tmp)
+    )
+
+    return(prozedurliste)
   }
 
-  # Liste von tibbles: für jede Prozedur
-  tmp_list <- map(prozeduren, extract_orgaeinheit)
-
-  # Bind rows (Prozeduren) und dann bind_cols für IK/Standortnummer
-  bind_rows(tmp_list) %>%
-    mutate(
-      IK = IK,
-      Standortnummer = Standortnummer
-    ) %>%
-    select(IK, Standortnummer, everything())
-}
 
 #' read_qualitaetsberichte_xml_diagnosen
 #' Liest für jede Organisationseinheit die Fallzahlen der Hauptdiagnosen.
 #' @param file_path character, Pfad zur XML-Datei
 #' @return tibble mit Spalten: IK, Standortnummer, <Diagnosecode>, OrgaEinheit_Nummer, OrgaEinheit_Name
-read_qualitaetsberichte_xml_diagnosen <- function(file_path) {
-  xml_data <- read_xml(file_path)
-  kh_path <- get_kh_path(xml_data)
 
-  IK <- xml_data %>% xml_find_all(glue::glue("//{kh_path}/IK")) %>% xml_text()
-  Standortnummer <- xml_data %>% xml_find_all("//Standortnummer") %>% xml_text()
+read_qualitaetsberichte_xml_diagnosen <-
+  function(file_path) {
+    extract_orgaeinheit <-
+      function(einzelne_diagnose) {
+        orgaeinheit_node <- xml_parents(einzelne_diagnose)[3] # go back to <Organisationseinheit-Fachabteilung>
 
-  # Alle <Hauptdiagnose>-Nodes finden
-  diagnosen <- xml_find_all(xml_data, "//Hauptdiagnose")
-  if (length(diagnosen) == 0) {
-    return(tibble(
-      IK = IK,
-      Standortnummer = Standortnummer
-    ))
-  }
+        column_names <- c(
+          xml_name(einzelne_diagnose),
+          "OrgaEinheit_Nummer",
+          "OrgaEinheit_Name"
+        )
+        column_values <- c(
+          xml_text(einzelne_diagnose),
+          xml_text(xml_find_all(orgaeinheit_node, "Gliederungsnummer")),
+          xml_text(xml_find_all(orgaeinheit_node, "Name"))
+        )
 
-  extract_orgaeinheit <- function(node_diag) {
-    orga_node <- xml_parents(node_diag)[[3]]
-    spalten_name <- xml_name(node_diag)
-    spalten_wert <- xml_text(node_diag)
-    orga_nummer <- xml_find_first(orga_node, "Gliederungsnummer") %>% xml_text()
-    orga_name <- xml_find_first(orga_node, "Name") %>% xml_text()
+        named_values <- setNames(column_values, column_names)
+        tib <- tibble(!!!named_values)
 
-    tibble(
-      !!spalten_name := spalten_wert,
-      OrgaEinheit_Nummer = orga_nummer,
-      OrgaEinheit_Name = orga_name
+        return(tib)
+      }
+
+    xml_data <- read_xml(file_path)
+    mehrere_standorte <- length(xml_children(xml_find_all(
+      xml_data,
+      "//Krankenhaus/Mehrere_Standorte"
+    ))) ==
+      2
+    kh_path <- ifelse(
+      mehrere_standorte,
+      "Standortkontaktdaten",
+      "Krankenhauskontaktdaten"
     )
-  }
 
-  tmp_list <- map(diagnosen, extract_orgaeinheit)
+    IK <- xml_text(xml_find_all(xml_data, glue::glue("//{kh_path}/IK")))
+    Standortnummer <- xml_text(xml_find_all(
+      xml_data,
+      glue::glue("//Standortnummer")
+    ))
 
-  bind_rows(tmp_list) %>%
-    mutate(
+    hauptdiagnose <- xml_find_all(xml_data, "//Hauptdiagnose")
+    tmp <- lapply(hauptdiagnose, xml_children)
+    tmp <- lapply(tmp, extract_orgaeinheit)
+    # tmp <- lapply(tmp, function(x) tibble(!!!setNames(xml_text(x), xml_name(x))))
+
+    diagnoseliste <- bind_cols(
       IK = IK,
-      Standortnummer = Standortnummer
-    ) %>%
-    select(IK, Standortnummer, everything())
-}
+      Standortnummer = Standortnummer,
+      bind_rows(tmp)
+    )
+
+    return(diagnoseliste)
+  }
 
 #' read_qualitaetsberichte_xml_medizinisches_leistungsangebot
 #' Liest für jede Organisationseinheit das medizinische Leistungsangebot.
 #' @param file_path character, Pfad zur XML-Datei
 #' @return tibble mit Spalten: IK, Standortnummer, <Angebotsname>, OrgaEinheit_Nummer, OrgaEinheit_Name
-read_qualitaetsberichte_xml_medizinisches_leistungsangebot <- function(
-  file_path
-) {
-  xml_data <- read_xml(file_path)
-  kh_path <- get_kh_path(xml_data)
 
-  IK <- xml_data %>% xml_find_all(glue::glue("//{kh_path}/IK")) %>% xml_text()
-  Standortnummer <- xml_data %>% xml_find_all("//Standortnummer") %>% xml_text()
+read_qualitaetsberichte_xml_medizinisches_leistungsangebot <-
+  function(file_path) {
+    extract_orgaeinheit <-
+      function(einzelnes_medizinisches_leistungsangebot) {
+        orgaeinheit_node <- xml_parents(
+          einzelnes_medizinisches_leistungsangebot
+        )[3] # go back to <Organisationseinheit-Fachabteilung>
 
-  angebote <- xml_find_all(xml_data, "//Medizinisches_Leistungsangebot")
-  if (length(angebote) == 0) {
-    return(tibble(
-      IK = IK,
-      Standortnummer = Standortnummer
-    ))
-  }
+        column_names <- c(
+          xml_name(einzelnes_medizinisches_leistungsangebot),
+          "OrgaEinheit_Nummer",
+          "OrgaEinheit_Name"
+        )
+        column_values <- c(
+          xml_text(einzelnes_medizinisches_leistungsangebot),
+          xml_text(xml_find_all(orgaeinheit_node, "Gliederungsnummer")),
+          xml_text(xml_find_all(orgaeinheit_node, "Name"))
+        )
 
-  extract_orgaeinheit <- function(node_angebot) {
-    orga_node <- xml_parents(node_angebot)[[3]]
-    spalten_name <- xml_name(node_angebot)
-    spalten_wert <- xml_text(node_angebot)
-    orga_nummer <- xml_find_first(orga_node, "Gliederungsnummer") %>% xml_text()
-    orga_name <- xml_find_first(orga_node, "Name") %>% xml_text()
+        if (length(column_names) != length(column_values)) {
+          cat(
+            paste0(
+              einzelnes_medizinisches_leistungsangebot,
+              column_names,
+              column_values
+            ),
+            "\n"
+          )
+        }
 
-    tibble(
-      !!spalten_name := spalten_wert,
-      OrgaEinheit_Nummer = orga_nummer,
-      OrgaEinheit_Name = orga_name
+        named_values <- setNames(column_values, column_names)
+        tib <- tibble(!!!named_values)
+
+        return(tib)
+      }
+
+    xml_data <- read_xml(file_path)
+    mehrere_standorte <- length(xml_children(xml_find_all(
+      xml_data,
+      "//Krankenhaus/Mehrere_Standorte"
+    ))) ==
+      2
+    kh_path <- ifelse(
+      mehrere_standorte,
+      "Standortkontaktdaten",
+      "Krankenhauskontaktdaten"
     )
+
+    IK <- xml_text(xml_find_all(xml_data, glue::glue("//{kh_path}/IK")))
+    Standortnummer <- xml_text(xml_find_all(
+      xml_data,
+      glue::glue("//Standortnummer")
+    ))
+
+    medizinisches_leistungsangebot <- xml_find_all(
+      xml_data,
+      "//Medizinisches_Leistungsangebot"
+    )
+    tmp <- lapply(medizinisches_leistungsangebot, xml_children)
+    tmp <- lapply(tmp, extract_orgaeinheit)
+    # tmp <- lapply(tmp, function(x) tibble(!!!setNames(xml_text(x), xml_name(x))))
+
+    medizinisches_leistungsangebot_liste <- bind_cols(
+      IK = IK,
+      Standortnummer = Standortnummer,
+      bind_rows(tmp)
+    )
+
+    return(medizinisches_leistungsangebot_liste)
   }
 
-  tmp_list <- map(angebote, extract_orgaeinheit)
-
-  bind_rows(tmp_list) %>%
-    mutate(
-      IK = IK,
-      Standortnummer = Standortnummer
-    ) %>%
-    select(IK, Standortnummer, everything())
-}
 
 #' read_qualitaetsberichte_xml_fachabteilungsschluessel
 #' Liest für jede Organisationseinheit den Fachabteilungsschlüssel.
 #' @param file_path character, Pfad zur XML-Datei
 #' @return tibble mit Spalten: IK, Standortnummer, <Schlüsselname>, OrgaEinheit_Nummer, OrgaEinheit_Name
-read_qualitaetsberichte_xml_fachabteilungsschluessel <- function(file_path) {
-  xml_data <- read_xml(file_path)
-  kh_path <- get_kh_path(xml_data)
 
-  IK <- xml_data %>% xml_find_all(glue::glue("//{kh_path}/IK")) %>% xml_text()
-  Standortnummer <- xml_data %>% xml_find_all("//Standortnummer") %>% xml_text()
+read_qualitaetsberichte_xml_fachabteilungsschluessel <-
+  function(file_path) {
+    extract_orgaeinheit <-
+      function(einzelner_fachabteilungsschluessel) {
+        orgaeinheit_node <- xml_parents(einzelner_fachabteilungsschluessel)[2] # go back to <Organisationseinheit-Fachabteilung>
 
-  faecher <- xml_find_all(xml_data, "//Fachabteilungsschluessel")
-  if (length(faecher) == 0) {
-    return(tibble(
-      IK = IK,
-      Standortnummer = Standortnummer
-    ))
-  }
+        column_names <- c(
+          xml_name(einzelner_fachabteilungsschluessel),
+          "OrgaEinheit_Nummer",
+          "OrgaEinheit_Name"
+        )
+        column_values <- c(
+          xml_text(einzelner_fachabteilungsschluessel),
+          xml_text(xml_find_all(orgaeinheit_node, "Gliederungsnummer")),
+          xml_text(xml_find_all(orgaeinheit_node, "Name"))
+        )
 
-  extract_orgaeinheit <- function(node_fach) {
-    orga_node <- xml_parents(node_fach)[[2]]
-    spalten_name <- xml_name(node_fach)
-    spalten_wert <- xml_text(node_fach)
-    orga_nummer <- xml_find_first(orga_node, "Gliederungsnummer") %>% xml_text()
-    orga_name <- xml_find_first(orga_node, "Name") %>% xml_text()
+        named_values <- setNames(column_values, column_names)
+        tib <- tibble(!!!named_values)
 
-    tibble(
-      !!spalten_name := spalten_wert,
-      OrgaEinheit_Nummer = orga_nummer,
-      OrgaEinheit_Name = orga_name
+        return(tib)
+      }
+
+    xml_data <- read_xml(file_path)
+    mehrere_standorte <- length(xml_children(xml_find_all(
+      xml_data,
+      "//Krankenhaus/Mehrere_Standorte"
+    ))) ==
+      2
+    kh_path <- ifelse(
+      mehrere_standorte,
+      "Standortkontaktdaten",
+      "Krankenhauskontaktdaten"
     )
-  }
 
-  tmp_list <- map(faecher, extract_orgaeinheit)
+    IK <- xml_text(xml_find_all(xml_data, glue::glue("//{kh_path}/IK")))
+    Standortnummer <- xml_text(xml_find_all(
+      xml_data,
+      glue::glue("//Standortnummer")
+    ))
 
-  bind_rows(tmp_list) %>%
-    mutate(
+    fachabteilungsschluessel <- xml_find_all(
+      xml_data,
+      "//Fachabteilungsschluessel"
+    )
+    tmp <- lapply(fachabteilungsschluessel, xml_children)
+    tmp <- lapply(tmp, extract_orgaeinheit)
+    # tmp <- lapply(tmp, function(x) tibble(!!!setNames(xml_text(x), xml_name(x))))
+
+    fachabteilungsschluesselliste <- bind_cols(
       IK = IK,
-      Standortnummer = Standortnummer
-    ) %>%
-    select(IK, Standortnummer, everything())
-}
+      Standortnummer = Standortnummer,
+      bind_rows(tmp)
+    )
+
+    return(fachabteilungsschluesselliste)
+  }
