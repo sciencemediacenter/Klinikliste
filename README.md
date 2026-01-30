@@ -22,11 +22,13 @@ Klinikliste/
 │   ├── 02_preprocess_das_files.R            # DAS-Dateien verarbeiten
 │   ├── 03_preprocess_inek_standorte.R       # InEK Standortliste verarbeiten
 │   ├── 04_anreicherung_qualitaetsberichte.R # Daten zusammenführen
+│   ├── 99_extract_single_hospital.R         # Einzelnes Krankenhaus abfragen
 │   │
 │   └── utils/                  # Hilfsfunktionen
 │       ├── utils_xml.R         # XML-Verarbeitung
 │       ├── utils_das.R         # DAS-Datei-Verarbeitung
-│       └── utils_inek.R        # InEK-Daten-Verarbeitung
+│       ├── utils_inek.R        # InEK-Daten-Verarbeitung
+│       └── utils_extract_single_hospital.R  # Funktionen für Einzelabfrage
 │
 ├── data/                       # Verarbeitete Daten (Output)
 │   ├── Qualitaetsberichte/     # Qualitätsberichte RData
@@ -52,6 +54,11 @@ Klinikliste/
    source("scripts/03_preprocess_inek_standorte.R")
    source("scripts/04_anreicherung_qualitaetsberichte.R")
    ```
+
+## Einzelnes Krankenhaus abfragen
+
+Das Skript `scripts/99_extract_single_hospital.R` ermöglicht die schnelle Abfrage einzelner Krankenhäuser, ohne alle Daten verarbeiten zu müssen. Siehe das Skript für Beispiele und verfügbare Datentypen.
+
 
 ## Datenquellen
 

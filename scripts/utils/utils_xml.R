@@ -291,52 +291,69 @@ read_qualitaetsberichte_xml_diagnosen <-
   }
 
 #' read_qualitaetsberichte_xml_medizinisches_leistungsangebot
-#' Liest für jede Organisationseinheit das medizinische Leistungsangebot.
+#' Liest das medizinische Leistungsangebot aus zwei Quellen:
+#' 1. Organisationseinheiten/Fachabteilungen - unter Organisationseinheit_Fachabteilung
+#' 2. Ambulanzen - unter Ambulante_Behandlungsmoeglichkeiten/Ambulanz
+#'
+#' Die XML-Strukturen unterscheiden sich:
+#' - Fachabteilung: Medizinisches_Leistungsangebot enthält VA_VU_Schluessel,
+#'   Parent ist Organisationseinheit_Fachabteilung mit Gliederungsnummer und Name
+#' - Ambulanz: Medizinisches_Leistungsangebot enthält VA_VU_Schluessel_Ambulanz,
+#'   Parent ist Ambulanz mit AM_Schluessel und Bezeichnung
+#'
 #' @param file_path character, Pfad zur XML-Datei
-#' @return tibble mit Spalten: IK, Standortnummer, <Angebotsname>, OrgaEinheit_Nummer, OrgaEinheit_Name
+#' @return list mit zwei tibbles:
+#'   - fachabteilung: IK, Standortnummer, <VA_VU_Schluessel>, OrgaEinheit_Nummer, OrgaEinheit_Name
+#'   - ambulanz: IK, Standortnummer, <VA_VU_Schluessel_Ambulanz>, Ambulanz_Schluessel, Ambulanz_Bezeichnung
 
 read_qualitaetsberichte_xml_medizinisches_leistungsangebot <-
   function(file_path) {
-    extract_orgaeinheit <-
-      function(einzelnes_medizinisches_leistungsangebot) {
-        orgaeinheit_node <- xml_parents(
-          einzelnes_medizinisches_leistungsangebot
-        )[3] # go back to <Organisationseinheit-Fachabteilung>
-
-        column_names <- c(
-          xml_name(einzelnes_medizinisches_leistungsangebot),
-          "OrgaEinheit_Nummer",
-          "OrgaEinheit_Name"
-        )
-        column_values <- c(
-          xml_text(einzelnes_medizinisches_leistungsangebot),
-          xml_text(xml_find_all(orgaeinheit_node, "Gliederungsnummer")),
-          xml_text(xml_find_all(orgaeinheit_node, "Name"))
-        )
-
-        if (length(column_names) != length(column_values)) {
-          cat(
-            paste0(
-              einzelnes_medizinisches_leistungsangebot,
-              column_names,
-              column_values
-            ),
-            "\n"
-          )
-        }
-
-        named_values <- setNames(column_values, column_names)
-        tib <- tibble(!!!named_values)
-
-        return(tib)
-      }
+    
+    # Helper für Fachabteilung-Einträge
+    extract_fachabteilung <- function(node) {
+      # Parent[3] = Organisationseinheit_Fachabteilung
+      orgaeinheit_node <- xml_parents(node)[3]
+      
+      column_names <- c(
+        xml_name(node),
+        "OrgaEinheit_Nummer",
+        "OrgaEinheit_Name"
+      )
+      column_values <- c(
+        xml_text(node),
+        xml_text(xml_find_first(orgaeinheit_node, "Gliederungsnummer")),
+        xml_text(xml_find_first(orgaeinheit_node, "Name"))
+      )
+      
+      named_values <- setNames(column_values, column_names)
+      tibble(!!!named_values)
+    }
+    
+    # Helper für Ambulanz-Einträge
+    extract_ambulanz <- function(node) {
+      # Parent[3] = Ambulanz
+      ambulanz_node <- xml_parents(node)[3]
+      
+      column_names <- c(
+        xml_name(node),
+        "Ambulanz_Schluessel",
+        "Ambulanz_Bezeichnung"
+      )
+      column_values <- c(
+        xml_text(node),
+        xml_text(xml_find_first(ambulanz_node, "AM_Schluessel")),
+        xml_text(xml_find_first(ambulanz_node, "Bezeichnung"))
+      )
+      
+      named_values <- setNames(column_values, column_names)
+      tibble(!!!named_values)
+    }
 
     xml_data <- read_xml(file_path)
     mehrere_standorte <- length(xml_children(xml_find_all(
       xml_data,
       "//Krankenhaus/Mehrere_Standorte"
-    ))) ==
-      2
+    ))) == 2
     kh_path <- ifelse(
       mehrere_standorte,
       "Standortkontaktdaten",
@@ -349,21 +366,54 @@ read_qualitaetsberichte_xml_medizinisches_leistungsangebot <-
       glue::glue("//Standortnummer")
     ))
 
-    medizinisches_leistungsangebot <- xml_find_all(
+    # Fachabteilung: VA_VU_Schluessel (nicht Ambulanz)
+    fachabteilung_nodes <- xml_find_all(
       xml_data,
-      "//Medizinisches_Leistungsangebot"
+      "//Organisationseinheit_Fachabteilung//Medizinisches_Leistungsangebot/*[not(self::Erlaeuterungen)]"
     )
-    tmp <- lapply(medizinisches_leistungsangebot, xml_children)
-    tmp <- lapply(tmp, extract_orgaeinheit)
-    # tmp <- lapply(tmp, function(x) tibble(!!!setNames(xml_text(x), xml_name(x))))
+    
+    if (length(fachabteilung_nodes) > 0) {
+      tmp_fa <- lapply(fachabteilung_nodes, extract_fachabteilung)
+      leistungsangebot_fachabteilung <- bind_cols(
+        IK = IK,
+        Standortnummer = Standortnummer,
+        bind_rows(tmp_fa)
+      )
+    } else {
+      leistungsangebot_fachabteilung <- tibble(
+        IK = character(),
+        Standortnummer = character(),
+        OrgaEinheit_Nummer = character(),
+        OrgaEinheit_Name = character()
+      )
+    }
 
-    medizinisches_leistungsangebot_liste <- bind_cols(
-      IK = IK,
-      Standortnummer = Standortnummer,
-      bind_rows(tmp)
+    # Ambulanz: VA_VU_Schluessel_Ambulanz
+    ambulanz_nodes <- xml_find_all(
+      xml_data,
+      "//Ambulanz//Medizinisches_Leistungsangebot/VA_VU_Schluessel_Ambulanz"
     )
+    
+    if (length(ambulanz_nodes) > 0) {
+      tmp_amb <- lapply(ambulanz_nodes, extract_ambulanz)
+      leistungsangebot_ambulanz <- bind_cols(
+        IK = IK,
+        Standortnummer = Standortnummer,
+        bind_rows(tmp_amb)
+      )
+    } else {
+      leistungsangebot_ambulanz <- tibble(
+        IK = character(),
+        Standortnummer = character(),
+        Ambulanz_Schluessel = character(),
+        Ambulanz_Bezeichnung = character()
+      )
+    }
 
-    return(medizinisches_leistungsangebot_liste)
+    return(list(
+      fachabteilung = leistungsangebot_fachabteilung,
+      ambulanz = leistungsangebot_ambulanz
+    ))
   }
 
 
