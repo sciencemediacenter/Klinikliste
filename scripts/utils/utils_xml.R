@@ -172,8 +172,17 @@ read_qualitaetsberichte_xml <- function(file_path, debugmode = FALSE) {
 
 #' read_qualitaetsberichte_xml_prozeduren
 #' Liest für jede Organisationseinheit die Fallzahlen der Prozeduren.
+#' 
+#' Hinweis zur Datenstruktur: Jedes XML-Kind-Element einer <Prozedur> wird als 
+#' eigene Zeile extrahiert. Dies bedeutet:
+#' - OPS_301 (Prozedurcode) und Anzahl/Anzahl_Datenschutz sind separate Zeilen
+#' - Ein leerer String ("") in der Wertspalte bedeutet, dass die Fallzahl aus 
+#'   Datenschutzgründen nicht angegeben wird (stammt aus <Anzahl_Datenschutz/>)
+#' - Bei Bedarf können die Zeilen über OrgaEinheit_Nummer gruppiert/zusammengeführt werden
+#'
 #' @param file_path character, Pfad zur XML-Datei
-#' @return tibble mit Spalten: IK, Standortnummer, <Prozedurname>, OrgaEinheit_Nummer, OrgaEinheit_Name
+#' @return tibble mit Spalten: IK, Standortnummer, <Elementname>, OrgaEinheit_Nummer, OrgaEinheit_Name
+#'   Mögliche Elementnamen: OPS_301, Anzahl, Anzahl_Datenschutz
 read_qualitaetsberichte_xml_prozeduren <-
   function(file_path) {
     extract_orgaeinheit <-
@@ -232,8 +241,17 @@ read_qualitaetsberichte_xml_prozeduren <-
 
 #' read_qualitaetsberichte_xml_diagnosen
 #' Liest für jede Organisationseinheit die Fallzahlen der Hauptdiagnosen.
+#' 
+#' Hinweis zur Datenstruktur: Jedes XML-Kind-Element einer <Hauptdiagnose> wird als 
+#' eigene Zeile extrahiert. Dies bedeutet:
+#' - ICD_10 (Diagnosecode) und Anzahl/Anzahl_Datenschutz sind separate Zeilen
+#' - Ein leerer String ("") in der Wertspalte bedeutet, dass die Fallzahl aus 
+#'   Datenschutzgründen nicht angegeben wird (stammt aus <Anzahl_Datenschutz/>)
+#' - Bei Bedarf können die Zeilen über OrgaEinheit_Nummer gruppiert/zusammengeführt werden
+#'
 #' @param file_path character, Pfad zur XML-Datei
-#' @return tibble mit Spalten: IK, Standortnummer, <Diagnosecode>, OrgaEinheit_Nummer, OrgaEinheit_Name
+#' @return tibble mit Spalten: IK, Standortnummer, <Elementname>, OrgaEinheit_Nummer, OrgaEinheit_Name
+#'   Mögliche Elementnamen: ICD_10, Anzahl, Anzahl_Datenschutz
 
 read_qualitaetsberichte_xml_diagnosen <-
   function(file_path) {
