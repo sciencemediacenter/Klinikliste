@@ -1,3 +1,7 @@
+# Source utils_xml.R to get get_qb_xml_files function
+# Note: This assumes scripts are run from the repository root
+source("scripts/utils/utils_xml.R")
+
 extract_html_element <-
   function(x, Element) {
     x <- lapply(x, function(x) {
