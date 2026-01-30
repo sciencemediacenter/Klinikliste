@@ -53,6 +53,29 @@ list_available_hospitals <- function(jahr = JAHR) {
 }
 
 
+#' list_available_years
+#'
+#' Returns a vector of years for which XML data is available.
+#' Scans data-raw/Qualitaetsberichte/ for xml_* directories.
+#'
+#' @return Integer vector of available years (e.g., c(2021, 2022, 2023))
+list_available_years <- function() {
+  if (!dir.exists(PATH_QB_RAW)) {
+    stop(glue("Directory not found: {PATH_QB_RAW}"))
+  }
+  
+  xml_dirs <- list.dirs(PATH_QB_RAW, recursive = FALSE, full.names = FALSE)
+  xml_dirs <- xml_dirs[grepl("^xml_[0-9]{4}$", xml_dirs)]
+  
+  if (length(xml_dirs) == 0) {
+    stop(glue("No xml_* directories found in {PATH_QB_RAW}"))
+  }
+  
+  jahre <- as.integer(sub("xml_", "", xml_dirs))
+  sort(jahre)
+}
+
+
 #' find_hospital_xml
 #'
 #' Finds XML file(s) for a hospital by IK, Standortnummer, or name.
@@ -259,6 +282,114 @@ extract_hospital <- function(ik = NULL, standortnummer = NULL, name = NULL,
 
   message("\nDone!")
   return(result)
+}
+
+
+# =============================================================================
+# Multi-Year Extraction
+# =============================================================================
+
+#' extract_hospital_history
+#'
+#' Extracts data for a single hospital across multiple years.
+#' Returns combined tibbles with a Jahr column added to each.
+#'
+#' Note: Name search is not supported for multi-year extraction.
+#' Use IK or Standortnummer instead.
+#'
+#' @param ik Character, IK number (required, or standortnummer)
+#' @param standortnummer Character, 9-digit location number (required, or ik)
+#' @param jahre Integer vector of years to extract. If NULL, auto-detects available years.
+#' @param extract Character vector specifying which data to extract (see extract_hospital)
+#' @param save_to Optional file path to save results as RData
+#' @return Named list with combined tibbles, each containing a Jahr column
+#'
+#' @examples
+#' # Extract basic info across all available years
+#' history <- extract_hospital_history(ik = "260100023")
+#'
+#' # Extract specific years
+#' history <- extract_hospital_history(ik = "260100023", jahre = c(2021, 2022, 2023))
+#'
+#' # Extract multiple data types
+#' history <- extract_hospital_history(
+#'   ik = "260100023",
+#'   jahre = c(2022, 2023),
+#'   extract = c("basic", "prozeduren")
+#' )
+extract_hospital_history <- function(ik = NULL, standortnummer = NULL,
+                                     jahre = NULL,
+                                     extract = c("basic"),
+                                     save_to = NULL) {
+  
+  # Require IK or Standortnummer (no name search for multi-year)
+  if (is.null(ik) && is.null(standortnummer)) {
+    stop("For multi-year extraction, either 'ik' or 'standortnummer' must be provided (name search not supported)")
+  }
+  
+  # Auto-detect years if not specified
+  if (is.null(jahre)) {
+    jahre <- list_available_years()
+    message(glue("Auto-detected years: {paste(jahre, collapse = ', ')}"))
+  }
+  
+  # Extract data for each year
+  results_by_year <- list()
+  for (jahr in jahre) {
+    message(glue("\n=== Year {jahr} ==="))
+    
+    tryCatch({
+      result <- extract_hospital(
+        ik = ik,
+        standortnummer = standortnummer,
+        jahr = jahr,
+        extract = extract
+      )
+      
+      if (!is.null(result) && is.list(result)) {
+        results_by_year[[as.character(jahr)]] <- result
+      }
+    }, error = function(e) {
+      message(glue("  Skipping {jahr}: {e$message}"))
+    })
+  }
+  
+  if (length(results_by_year) == 0) {
+    message("No data found for any year.")
+    return(NULL)
+  }
+  
+  # Combine across years, adding Jahr column
+  # Get all unique data types across years
+  all_keys <- unique(unlist(lapply(results_by_year, names)))
+  
+  combined <- list()
+  for (key in all_keys) {
+    # Collect this data type from all years, add Jahr column
+    tibbles_with_jahr <- lapply(names(results_by_year), function(jahr) {
+      tib <- results_by_year[[jahr]][[key]]
+      if (!is.null(tib) && nrow(tib) > 0) {
+        tib <- tib |> mutate(Jahr = as.integer(jahr), .before = 1)
+      }
+      tib
+    })
+    
+    # Remove NULLs and empty tibbles
+    tibbles_with_jahr <- Filter(function(x) !is.null(x) && nrow(x) > 0, tibbles_with_jahr)
+    
+    if (length(tibbles_with_jahr) > 0) {
+      combined[[key]] <- bind_rows(tibbles_with_jahr)
+    }
+  }
+  
+  # Optionally save
+  if (!is.null(save_to)) {
+    save(combined, file = save_to)
+    message(glue("\nResults saved to: {save_to}"))
+  }
+  
+  message("\n\nDone! Combined data across years.")
+  return(combined)
 }
 
 

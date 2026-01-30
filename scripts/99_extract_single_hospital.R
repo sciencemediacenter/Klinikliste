@@ -4,6 +4,13 @@
 #
 # Dieses Skript lädt die Funktionen zum Abfragen einzelner Krankenhäuser
 # und enthält Beispiele zur Nutzung.
+#
+# Funktionen:
+#   - list_available_years()        Verfügbare Jahre anzeigen
+#   - list_available_hospitals()    Verfügbare Krankenhäuser eines Jahres
+#   - extract_hospital()            Daten eines Krankenhauses (ein Jahr)
+#   - extract_hospital_history()    Daten eines Krankenhauses (mehrere Jahre)
+#   - hospital_info()               Kurzform für Basisdaten
 
 # Setup -----------------------------------------------------------
 library(tidyverse)
@@ -21,10 +28,13 @@ source("scripts/utils/utils_extract_single_hospital.R")
 
 
 # =============================================================================
-# Beispiele
+# Beispiele: Einzelnes Jahr
 # =============================================================================
 
-# Alle verfügbaren Krankenhäuser auflisten
+# Verfügbare Jahre anzeigen
+list_available_years()
+
+# Alle verfügbaren Krankenhäuser auflisten (für aktuelles Jahr aus config.R)
 hospitals <- list_available_hospitals()
 
 # Krankenhaus per IK-Nummer finden
@@ -42,17 +52,45 @@ data <- extract_hospital(
   extract = c("basic", "prozeduren", "diagnosen")
 )
 
+# Leistungsangebot (enthält zwei tibbles: fachabteilung und ambulanz)
 data <- extract_hospital(
   ik = "260100023",
   extract = c("basic", "leistungsangebot")
 )
-
 
 # Alle verfügbaren Daten extrahieren
 data <- extract_hospital(ik = "260100023", extract = "all")
 
 # Nur Basisinformationen (Kurzform)
 info <- hospital_info(ik = "260100023")
+
+
+# =============================================================================
+# Beispiele: Mehrere Jahre (History)
+# =============================================================================
+
+# Basisdaten über alle verfügbaren Jahre extrahieren
+history <- extract_hospital_history(ik = "260100023")
+
+# Bestimmte Jahre auswählen
+history <- extract_hospital_history(
+  ik = "260100023",
+  jahre = c(2022, 2023)
+)
+
+# Mehrere Datentypen über mehrere Jahre
+history <- extract_hospital_history(
+  ik = "260100023",
+  jahre = c(2022, 2023),
+  extract = c("basic", "prozeduren")
+)
+
+# Ergebnis: Tibbles mit Jahr-Spalte
+# history$basic       -> tibble mit Jahr, name, betten, ...
+# history$prozeduren  -> tibble mit Jahr, IK, OPS_301, ...
+
+# Beispiel: Bettenentwicklung analysieren
+history$basic |> select(Jahr, name, betten)
 
 # =============================================================================
 # Verfügbare Datentypen (extract Parameter)
