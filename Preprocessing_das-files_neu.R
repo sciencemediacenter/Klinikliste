@@ -21,7 +21,7 @@ jahr <- 2023
 # Basisverzeichnis für alle Ein- und Ausgaben
 destination_path <- file.path("Qualitaetsberichte/nobackup/results")
 
-path <- file.path("Qualitaetsberichte", "nobackup", glue("xml_{jahr}"))
+path <- file.path("Qualitaetsberichte", "nobckup", glue("xml_{jahr}"))
 
 file_list <- list.files(path)
 file_list <- file_list[str_ends(file_list, pattern = "das.xml")] # nur ...das.xml files !!!!
