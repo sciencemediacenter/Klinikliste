@@ -96,7 +96,7 @@ read_qualitaetsberichte_xml <- function(file_path, debugmode = FALSE) {
   # 1) Load base info (xml_data, IK, Standortnummer)
   base_info <- get_xml_base_info(file_path)
   xml_data <- base_info$xml_data
-  
+
   # Determine kh_path for address extraction
   kh_path <- get_kh_path(xml_data)
 
@@ -186,33 +186,11 @@ read_qualitaetsberichte_xml <- function(file_path, debugmode = FALSE) {
 #'   Mögliche Elementnamen: OPS_301, Anzahl, Anzahl_Datenschutz
 read_qualitaetsberichte_xml_prozeduren <-
   function(file_path) {
-    extract_orgaeinheit <-
-      function(einzelne_prozedur) {
-        orgaeinheit_node <- xml_parents(einzelne_prozedur)[4] # go back to <Organisationseinheit-Fachabteilung>
-
-        column_names <- c(
-          xml_name(einzelne_prozedur),
-          "OrgaEinheit_Nummer",
-          "OrgaEinheit_Name"
-        )
-        column_values <- c(
-          xml_text(einzelne_prozedur),
-          xml_text(xml_find_all(orgaeinheit_node, "Gliederungsnummer")),
-          xml_text(xml_find_all(orgaeinheit_node, "Name"))
-        )
-
-        named_values <- setNames(column_values, column_names)
-        tib <- tibble(!!!named_values)
-
-        return(tib)
-      }
-
     base_info <- get_xml_base_info(file_path)
 
     prozedur <- xml_find_all(base_info$xml_data, "//Prozedur")
     tmp <- lapply(prozedur, xml_children)
-    tmp <- lapply(tmp, extract_orgaeinheit)
-    # tmp <- lapply(tmp, function(x) tibble(!!!setNames(xml_text(x), xml_name(x))))
+    tmp <- lapply(tmp, extract_orgaeinheit, parent_level = 4) # go back to <Organisationseinheit-Fachabteilung>
 
     prozedurliste <- bind_cols(
       IK = base_info$IK,
@@ -240,33 +218,11 @@ read_qualitaetsberichte_xml_prozeduren <-
 
 read_qualitaetsberichte_xml_diagnosen <-
   function(file_path) {
-    extract_orgaeinheit <-
-      function(einzelne_diagnose) {
-        orgaeinheit_node <- xml_parents(einzelne_diagnose)[3] # go back to <Organisationseinheit-Fachabteilung>
-
-        column_names <- c(
-          xml_name(einzelne_diagnose),
-          "OrgaEinheit_Nummer",
-          "OrgaEinheit_Name"
-        )
-        column_values <- c(
-          xml_text(einzelne_diagnose),
-          xml_text(xml_find_all(orgaeinheit_node, "Gliederungsnummer")),
-          xml_text(xml_find_all(orgaeinheit_node, "Name"))
-        )
-
-        named_values <- setNames(column_values, column_names)
-        tib <- tibble(!!!named_values)
-
-        return(tib)
-      }
-
     base_info <- get_xml_base_info(file_path)
 
     hauptdiagnose <- xml_find_all(base_info$xml_data, "//Hauptdiagnose")
     tmp <- lapply(hauptdiagnose, xml_children)
-    tmp <- lapply(tmp, extract_orgaeinheit)
-    # tmp <- lapply(tmp, function(x) tibble(!!!setNames(xml_text(x), xml_name(x))))
+    tmp <- lapply(tmp, extract_orgaeinheit, parent_level = 3) # go back to <Organisationseinheit-Fachabteilung>
 
     diagnoseliste <- bind_cols(
       IK = base_info$IK,
@@ -298,6 +254,33 @@ get_xml_base_info <- function(file_path) {
 }
 
 
+#' extract_orgaeinheit
+#' Shared helper to extract Organisationseinheit information from XML nodes.
+#' Navigates up the XML tree to find the parent Organisationseinheit_Fachabteilung node
+#' and extracts Gliederungsnummer and Name along with the current node's data.
+#'
+#' @param node xml_node, the current XML node to process
+#' @param parent_level integer, how many levels up to find the Organisationseinheit node (default: 3)
+#' @return tibble with columns: <node_name>, OrgaEinheit_Nummer, OrgaEinheit_Name
+extract_orgaeinheit <- function(node, parent_level = 3) {
+  orgaeinheit_node <- xml_parents(node)[parent_level]
+
+  column_names <- c(
+    xml_name(node),
+    "OrgaEinheit_Nummer",
+    "OrgaEinheit_Name"
+  )
+  column_values <- c(
+    xml_text(node),
+    xml_text(xml_find_first(orgaeinheit_node, "Gliederungsnummer")),
+    xml_text(xml_find_first(orgaeinheit_node, "Name"))
+  )
+
+  named_values <- setNames(column_values, column_names)
+  tibble(!!!named_values)
+}
+
+
 #' read_qualitaetsberichte_xml_medizinisches_leistungsangebot_fachabteilung
 #' Liest das medizinische Leistungsangebot der Fachabteilungen.
 #'
@@ -305,25 +288,6 @@ get_xml_base_info <- function(file_path) {
 #' @return tibble mit Spalten: IK, Standortnummer, VA_VU_Schluessel, OrgaEinheit_Nummer, OrgaEinheit_Name
 read_qualitaetsberichte_xml_medizinisches_leistungsangebot_fachabteilung <-
   function(file_path) {
-    extract_fachabteilung <- function(node) {
-      # Parent[3] = Organisationseinheit_Fachabteilung
-      orgaeinheit_node <- xml_parents(node)[3]
-
-      column_names <- c(
-        xml_name(node),
-        "OrgaEinheit_Nummer",
-        "OrgaEinheit_Name"
-      )
-      column_values <- c(
-        xml_text(node),
-        xml_text(xml_find_first(orgaeinheit_node, "Gliederungsnummer")),
-        xml_text(xml_find_first(orgaeinheit_node, "Name"))
-      )
-
-      named_values <- setNames(column_values, column_names)
-      tibble(!!!named_values)
-    }
-
     base_info <- get_xml_base_info(file_path)
 
     fachabteilung_nodes <- xml_find_all(
@@ -332,7 +296,11 @@ read_qualitaetsberichte_xml_medizinisches_leistungsangebot_fachabteilung <-
     )
 
     if (length(fachabteilung_nodes) > 0) {
-      tmp_fa <- lapply(fachabteilung_nodes, extract_fachabteilung)
+      tmp_fa <- lapply(
+        fachabteilung_nodes,
+        extract_orgaeinheit,
+        parent_level = 3
+      )
       bind_cols(
         IK = base_info$IK,
         Standortnummer = base_info$Standortnummer,
@@ -407,27 +375,6 @@ read_qualitaetsberichte_xml_medizinisches_leistungsangebot_ambulanz <-
 
 read_qualitaetsberichte_xml_fachabteilungsschluessel <-
   function(file_path) {
-    extract_orgaeinheit <-
-      function(einzelner_fachabteilungsschluessel) {
-        orgaeinheit_node <- xml_parents(einzelner_fachabteilungsschluessel)[2] # go back to <Organisationseinheit-Fachabteilung>
-
-        column_names <- c(
-          xml_name(einzelner_fachabteilungsschluessel),
-          "OrgaEinheit_Nummer",
-          "OrgaEinheit_Name"
-        )
-        column_values <- c(
-          xml_text(einzelner_fachabteilungsschluessel),
-          xml_text(xml_find_all(orgaeinheit_node, "Gliederungsnummer")),
-          xml_text(xml_find_all(orgaeinheit_node, "Name"))
-        )
-
-        named_values <- setNames(column_values, column_names)
-        tib <- tibble(!!!named_values)
-
-        return(tib)
-      }
-
     base_info <- get_xml_base_info(file_path)
 
     fachabteilungsschluessel <- xml_find_all(
@@ -435,8 +382,7 @@ read_qualitaetsberichte_xml_fachabteilungsschluessel <-
       "//Fachabteilungsschluessel"
     )
     tmp <- lapply(fachabteilungsschluessel, xml_children)
-    tmp <- lapply(tmp, extract_orgaeinheit)
-    # tmp <- lapply(tmp, function(x) tibble(!!!setNames(xml_text(x), xml_name(x))))
+    tmp <- lapply(tmp, extract_orgaeinheit, parent_level = 2) # go back to <Organisationseinheit-Fachabteilung>
 
     fachabteilungsschluesselliste <- bind_cols(
       IK = base_info$IK,
