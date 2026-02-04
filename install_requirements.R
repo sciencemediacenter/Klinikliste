@@ -7,26 +7,26 @@
 packages <- c(
   # Core data manipulation
 
-"tidyverse",
-  
+  "tidyverse",
+
   # XML/HTML parsing
-"xml2",
-"rvest",
-  
+  "xml2",
+  "rvest",
+
   # Utilities
-"glue",
-"tictoc",
-  
+  "glue",
+  "tictoc",
+
   # Parallel processing
-"furrr",
-"future"
+  "furrr",
+  "future"
 )
 
 # Install missing packages
 install_if_missing <- function(pkg) {
   if (!requireNamespace(pkg, quietly = TRUE)) {
     message(paste("Installing:", pkg))
-    install.packages(pkg, repos = "https://cloud.r-project.org")
+    install.packages(pkg)
   } else {
     message(paste("Already installed:", pkg))
   }
