@@ -86,19 +86,38 @@ save(
   file = file.path(PATH_QB_OUTPUT, glue("Fallzahlen_Diagnosen_{JAHR}.Rdata"))
 )
 
-# Lese Medizinisches Leistungsangebot ein -------------------------
-tic("Medizinisches Leistungsangebot einlesen")
-Medizinisches_Leistungsangebot <- future_map_dfr(
+# Lese Medizinisches Leistungsangebot Fachabteilung ein -------------------------
+tic("Medizinisches Leistungsangebot Fachabteilung einlesen")
+Medizinisches_Leistungsangebot_Fachabteilung <- future_map_dfr(
   xml_files,
-  read_qualitaetsberichte_xml_medizinisches_leistungsangebot,
+  read_qualitaetsberichte_xml_medizinisches_leistungsangebot_fachabteilung,
   .progress = TRUE
 )
 toc()
 
-# Save data
 save(
-  Medizinisches_Leistungsangebot,
-  file = file.path(PATH_QB_OUTPUT, glue("Medizinisches_Leistungsangebot_{JAHR}.Rdata"))
+  Medizinisches_Leistungsangebot_Fachabteilung,
+  file = file.path(
+    PATH_QB_OUTPUT,
+    glue("Medizinisches_Leistungsangebot_Fachabteilung_{JAHR}.Rdata")
+  )
+)
+
+# Lese Medizinisches Leistungsangebot Ambulanz ein -------------------------
+tic("Medizinisches Leistungsangebot Ambulanz einlesen")
+Medizinisches_Leistungsangebot_Ambulanz <- future_map_dfr(
+  xml_files,
+  read_qualitaetsberichte_xml_medizinisches_leistungsangebot_ambulanz,
+  .progress = TRUE
+)
+toc()
+
+save(
+  Medizinisches_Leistungsangebot_Ambulanz,
+  file = file.path(
+    PATH_QB_OUTPUT,
+    glue("Medizinisches_Leistungsangebot_Ambulanz_{JAHR}.Rdata")
+  )
 )
 
 # Lese Fachabteilungsschluessel ein --------------------------------
@@ -113,7 +132,10 @@ toc()
 # Save data
 save(
   Fachabteilungsschluessel,
-  file = file.path(PATH_QB_OUTPUT, glue("Fachabteilungsschluessel_{JAHR}.Rdata"))
+  file = file.path(
+    PATH_QB_OUTPUT,
+    glue("Fachabteilungsschluessel_{JAHR}.Rdata")
+  )
 )
 
 # Cleanup: revert to sequential processing

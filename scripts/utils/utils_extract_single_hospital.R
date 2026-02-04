@@ -112,9 +112,9 @@ find_hospital_xml <- function(ik = NULL, standortnummer = NULL, name = NULL, jah
       mutate(
         hospital_name = map_chr(file_xml, function(f) {
           tryCatch({
-            xml_data <- read_xml(f)
-            kh_path <- get_kh_path(xml_data)
-            xml_text(xml_find_first(xml_data, glue("//{kh_path}/Name")))
+            base_info <- get_xml_base_info(f)
+            kh_path <- get_kh_path(base_info$xml_data)
+            xml_text(xml_find_first(base_info$xml_data, glue("//{kh_path}/Name")))
           }, error = function(e) NA_character_)
         })
       ) |>
@@ -227,9 +227,8 @@ extract_hospital <- function(ik = NULL, standortnummer = NULL, name = NULL,
 
   if ("leistungsangebot" %in% extract) {
     message("  - Medical services (Leistungsangebot)...")
-    leistungsangebot_raw <- read_qualitaetsberichte_xml_medizinisches_leistungsangebot(xml_file)
-    result$leistungsangebot_fachabteilung <- leistungsangebot_raw$fachabteilung
-    result$leistungsangebot_ambulanz <- leistungsangebot_raw$ambulanz
+    result$leistungsangebot_fachabteilung <- read_qualitaetsberichte_xml_medizinisches_leistungsangebot_fachabteilung(xml_file)
+    result$leistungsangebot_ambulanz <- read_qualitaetsberichte_xml_medizinisches_leistungsangebot_ambulanz(xml_file)
     message(glue("    {nrow(result$leistungsangebot_fachabteilung)} services (Fachabteilung), {nrow(result$leistungsangebot_ambulanz)} services (Ambulanz)"))
   }
 

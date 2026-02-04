@@ -93,10 +93,11 @@ get_spezialversorgung_code <- function(codes) {
 #'   ik, name, strasse, hausnummer, plz, ort, standortnummer, betten,
 #'   notfallstufe (0–3), kommentar_notfallstufe, plus die Spezialversorgungs-Spalten.
 read_qualitaetsberichte_xml <- function(file_path, debugmode = FALSE) {
-  # 1) XML laden
-  xml_data <- read_xml(file_path)
-
-  # 2) KH-Pfad bestimmen
+  # 1) Load base info (xml_data, IK, Standortnummer)
+  base_info <- get_xml_base_info(file_path)
+  xml_data <- base_info$xml_data
+  
+  # Determine kh_path for address extraction
   kh_path <- get_kh_path(xml_data)
 
   # 3) Funktion, um Text an einem XPath //{kh_path}/... abzurufen
@@ -107,13 +108,13 @@ read_qualitaetsberichte_xml <- function(file_path, debugmode = FALSE) {
   }
 
   # 4) Adress-/Kontakt-Felder
-  ik <- extract_text("IK")
+  ik <- base_info$IK
   name <- extract_text("Name")
   strasse <- extract_text("Kontakt_Zugang/Strasse")
   hausnummer <- extract_text("Kontakt_Zugang/Hausnummer")
   plz <- extract_text("Kontakt_Zugang/Postleitzahl")
   ort <- extract_text("Kontakt_Zugang/Ort")
-  standortnummer <- xml_data %>% xml_find_all("//Standortnummer") %>% xml_text()
+  standortnummer <- base_info$Standortnummer
   betten <- xml_data %>% xml_find_all("//Anzahl_Betten") %>% xml_text()
 
   kommentar_notfallstufe <- xml_data %>%
@@ -172,11 +173,11 @@ read_qualitaetsberichte_xml <- function(file_path, debugmode = FALSE) {
 
 #' read_qualitaetsberichte_xml_prozeduren
 #' Liest für jede Organisationseinheit die Fallzahlen der Prozeduren.
-#' 
-#' Hinweis zur Datenstruktur: Jedes XML-Kind-Element einer <Prozedur> wird als 
+#'
+#' Hinweis zur Datenstruktur: Jedes XML-Kind-Element einer <Prozedur> wird als
 #' eigene Zeile extrahiert. Dies bedeutet:
 #' - OPS_301 (Prozedurcode) und Anzahl/Anzahl_Datenschutz sind separate Zeilen
-#' - Ein leerer String ("") in der Wertspalte bedeutet, dass die Fallzahl aus 
+#' - Ein leerer String ("") in der Wertspalte bedeutet, dass die Fallzahl aus
 #'   Datenschutzgründen nicht angegeben wird (stammt aus <Anzahl_Datenschutz/>)
 #' - Bei Bedarf können die Zeilen über OrgaEinheit_Nummer gruppiert/zusammengeführt werden
 #'
@@ -206,32 +207,16 @@ read_qualitaetsberichte_xml_prozeduren <-
         return(tib)
       }
 
-    xml_data <- read_xml(file_path)
-    mehrere_standorte <- length(xml_children(xml_find_all(
-      xml_data,
-      "//Krankenhaus/Mehrere_Standorte"
-    ))) ==
-      2
-    kh_path <- ifelse(
-      mehrere_standorte,
-      "Standortkontaktdaten",
-      "Krankenhauskontaktdaten"
-    )
+    base_info <- get_xml_base_info(file_path)
 
-    IK <- xml_text(xml_find_all(xml_data, glue::glue("//{kh_path}/IK")))
-    Standortnummer <- xml_text(xml_find_all(
-      xml_data,
-      glue::glue("//Standortnummer")
-    ))
-
-    prozedur <- xml_find_all(xml_data, "//Prozedur")
+    prozedur <- xml_find_all(base_info$xml_data, "//Prozedur")
     tmp <- lapply(prozedur, xml_children)
     tmp <- lapply(tmp, extract_orgaeinheit)
     # tmp <- lapply(tmp, function(x) tibble(!!!setNames(xml_text(x), xml_name(x))))
 
     prozedurliste <- bind_cols(
-      IK = IK,
-      Standortnummer = Standortnummer,
+      IK = base_info$IK,
+      Standortnummer = base_info$Standortnummer,
       bind_rows(tmp)
     )
 
@@ -241,11 +226,11 @@ read_qualitaetsberichte_xml_prozeduren <-
 
 #' read_qualitaetsberichte_xml_diagnosen
 #' Liest für jede Organisationseinheit die Fallzahlen der Hauptdiagnosen.
-#' 
-#' Hinweis zur Datenstruktur: Jedes XML-Kind-Element einer <Hauptdiagnose> wird als 
+#'
+#' Hinweis zur Datenstruktur: Jedes XML-Kind-Element einer <Hauptdiagnose> wird als
 #' eigene Zeile extrahiert. Dies bedeutet:
 #' - ICD_10 (Diagnosecode) und Anzahl/Anzahl_Datenschutz sind separate Zeilen
-#' - Ein leerer String ("") in der Wertspalte bedeutet, dass die Fallzahl aus 
+#' - Ein leerer String ("") in der Wertspalte bedeutet, dass die Fallzahl aus
 #'   Datenschutzgründen nicht angegeben wird (stammt aus <Anzahl_Datenschutz/>)
 #' - Bei Bedarf können die Zeilen über OrgaEinheit_Nummer gruppiert/zusammengeführt werden
 #'
@@ -276,62 +261,54 @@ read_qualitaetsberichte_xml_diagnosen <-
         return(tib)
       }
 
-    xml_data <- read_xml(file_path)
-    mehrere_standorte <- length(xml_children(xml_find_all(
-      xml_data,
-      "//Krankenhaus/Mehrere_Standorte"
-    ))) ==
-      2
-    kh_path <- ifelse(
-      mehrere_standorte,
-      "Standortkontaktdaten",
-      "Krankenhauskontaktdaten"
-    )
+    base_info <- get_xml_base_info(file_path)
 
-    IK <- xml_text(xml_find_all(xml_data, glue::glue("//{kh_path}/IK")))
-    Standortnummer <- xml_text(xml_find_all(
-      xml_data,
-      glue::glue("//Standortnummer")
-    ))
-
-    hauptdiagnose <- xml_find_all(xml_data, "//Hauptdiagnose")
+    hauptdiagnose <- xml_find_all(base_info$xml_data, "//Hauptdiagnose")
     tmp <- lapply(hauptdiagnose, xml_children)
     tmp <- lapply(tmp, extract_orgaeinheit)
     # tmp <- lapply(tmp, function(x) tibble(!!!setNames(xml_text(x), xml_name(x))))
 
     diagnoseliste <- bind_cols(
-      IK = IK,
-      Standortnummer = Standortnummer,
+      IK = base_info$IK,
+      Standortnummer = base_info$Standortnummer,
       bind_rows(tmp)
     )
 
     return(diagnoseliste)
   }
 
-#' read_qualitaetsberichte_xml_medizinisches_leistungsangebot
-#' Liest das medizinische Leistungsangebot aus zwei Quellen:
-#' 1. Organisationseinheiten/Fachabteilungen - unter Organisationseinheit_Fachabteilung
-#' 2. Ambulanzen - unter Ambulante_Behandlungsmoeglichkeiten/Ambulanz
+#' get_xml_base_info
+#' Extracts common base information from Qualitätsbericht XML files.
+#' Used by medizinisches Leistungsangebot functions.
 #'
-#' Die XML-Strukturen unterscheiden sich:
-#' - Fachabteilung: Medizinisches_Leistungsangebot enthält VA_VU_Schluessel,
-#'   Parent ist Organisationseinheit_Fachabteilung mit Gliederungsnummer und Name
-#' - Ambulanz: Medizinisches_Leistungsangebot enthält VA_VU_Schluessel_Ambulanz,
-#'   Parent ist Ambulanz mit AM_Schluessel und Bezeichnung
+#' @param file_path character, path to XML file
+#' @return list with xml_data, IK, and Standortnummer
+get_xml_base_info <- function(file_path) {
+  xml_data <- read_xml(file_path)
+  kh_path <- get_kh_path(xml_data)
+
+  IK <- xml_text(xml_find_all(xml_data, glue::glue("//{kh_path}/IK")))
+  Standortnummer <- xml_text(xml_find_all(xml_data, "//Standortnummer"))
+
+  list(
+    xml_data = xml_data,
+    IK = IK,
+    Standortnummer = Standortnummer
+  )
+}
+
+
+#' read_qualitaetsberichte_xml_medizinisches_leistungsangebot_fachabteilung
+#' Liest das medizinische Leistungsangebot der Fachabteilungen.
 #'
 #' @param file_path character, Pfad zur XML-Datei
-#' @return list mit zwei tibbles:
-#'   - fachabteilung: IK, Standortnummer, <VA_VU_Schluessel>, OrgaEinheit_Nummer, OrgaEinheit_Name
-#'   - ambulanz: IK, Standortnummer, <VA_VU_Schluessel_Ambulanz>, Ambulanz_Schluessel, Ambulanz_Bezeichnung
-
-read_qualitaetsberichte_xml_medizinisches_leistungsangebot <-
+#' @return tibble mit Spalten: IK, Standortnummer, VA_VU_Schluessel, OrgaEinheit_Nummer, OrgaEinheit_Name
+read_qualitaetsberichte_xml_medizinisches_leistungsangebot_fachabteilung <-
   function(file_path) {
-    
-    # Helper für Fachabteilung-Einträge
     extract_fachabteilung <- function(node) {
       # Parent[3] = Organisationseinheit_Fachabteilung
       orgaeinheit_node <- xml_parents(node)[3]
-      
+
       column_names <- c(
         xml_name(node),
         "OrgaEinheit_Nummer",
@@ -342,16 +319,47 @@ read_qualitaetsberichte_xml_medizinisches_leistungsangebot <-
         xml_text(xml_find_first(orgaeinheit_node, "Gliederungsnummer")),
         xml_text(xml_find_first(orgaeinheit_node, "Name"))
       )
-      
+
       named_values <- setNames(column_values, column_names)
       tibble(!!!named_values)
     }
-    
-    # Helper für Ambulanz-Einträge
+
+    base_info <- get_xml_base_info(file_path)
+
+    fachabteilung_nodes <- xml_find_all(
+      base_info$xml_data,
+      "//Organisationseinheit_Fachabteilung//Medizinisches_Leistungsangebot/*[not(self::Erlaeuterungen)]"
+    )
+
+    if (length(fachabteilung_nodes) > 0) {
+      tmp_fa <- lapply(fachabteilung_nodes, extract_fachabteilung)
+      bind_cols(
+        IK = base_info$IK,
+        Standortnummer = base_info$Standortnummer,
+        bind_rows(tmp_fa)
+      )
+    } else {
+      tibble(
+        IK = character(),
+        Standortnummer = character(),
+        OrgaEinheit_Nummer = character(),
+        OrgaEinheit_Name = character()
+      )
+    }
+  }
+
+
+#' read_qualitaetsberichte_xml_medizinisches_leistungsangebot_ambulanz
+#' Liest das medizinische Leistungsangebot der Ambulanzen.
+#'
+#' @param file_path character, Pfad zur XML-Datei
+#' @return tibble mit Spalten: IK, Standortnummer, VA_VU_Schluessel_Ambulanz, Ambulanz_Schluessel, Ambulanz_Bezeichnung
+read_qualitaetsberichte_xml_medizinisches_leistungsangebot_ambulanz <-
+  function(file_path) {
     extract_ambulanz <- function(node) {
       # Parent[3] = Ambulanz
       ambulanz_node <- xml_parents(node)[3]
-      
+
       column_names <- c(
         xml_name(node),
         "Ambulanz_Schluessel",
@@ -362,76 +370,33 @@ read_qualitaetsberichte_xml_medizinisches_leistungsangebot <-
         xml_text(xml_find_first(ambulanz_node, "AM_Schluessel")),
         xml_text(xml_find_first(ambulanz_node, "Bezeichnung"))
       )
-      
+
       named_values <- setNames(column_values, column_names)
       tibble(!!!named_values)
     }
 
-    xml_data <- read_xml(file_path)
-    mehrere_standorte <- length(xml_children(xml_find_all(
-      xml_data,
-      "//Krankenhaus/Mehrere_Standorte"
-    ))) == 2
-    kh_path <- ifelse(
-      mehrere_standorte,
-      "Standortkontaktdaten",
-      "Krankenhauskontaktdaten"
-    )
+    base_info <- get_xml_base_info(file_path)
 
-    IK <- xml_text(xml_find_all(xml_data, glue::glue("//{kh_path}/IK")))
-    Standortnummer <- xml_text(xml_find_all(
-      xml_data,
-      glue::glue("//Standortnummer")
-    ))
-
-    # Fachabteilung: VA_VU_Schluessel (nicht Ambulanz)
-    fachabteilung_nodes <- xml_find_all(
-      xml_data,
-      "//Organisationseinheit_Fachabteilung//Medizinisches_Leistungsangebot/*[not(self::Erlaeuterungen)]"
-    )
-    
-    if (length(fachabteilung_nodes) > 0) {
-      tmp_fa <- lapply(fachabteilung_nodes, extract_fachabteilung)
-      leistungsangebot_fachabteilung <- bind_cols(
-        IK = IK,
-        Standortnummer = Standortnummer,
-        bind_rows(tmp_fa)
-      )
-    } else {
-      leistungsangebot_fachabteilung <- tibble(
-        IK = character(),
-        Standortnummer = character(),
-        OrgaEinheit_Nummer = character(),
-        OrgaEinheit_Name = character()
-      )
-    }
-
-    # Ambulanz: VA_VU_Schluessel_Ambulanz
     ambulanz_nodes <- xml_find_all(
-      xml_data,
+      base_info$xml_data,
       "//Ambulanz//Medizinisches_Leistungsangebot/VA_VU_Schluessel_Ambulanz"
     )
-    
+
     if (length(ambulanz_nodes) > 0) {
       tmp_amb <- lapply(ambulanz_nodes, extract_ambulanz)
-      leistungsangebot_ambulanz <- bind_cols(
-        IK = IK,
-        Standortnummer = Standortnummer,
+      bind_cols(
+        IK = base_info$IK,
+        Standortnummer = base_info$Standortnummer,
         bind_rows(tmp_amb)
       )
     } else {
-      leistungsangebot_ambulanz <- tibble(
+      tibble(
         IK = character(),
         Standortnummer = character(),
         Ambulanz_Schluessel = character(),
         Ambulanz_Bezeichnung = character()
       )
     }
-
-    return(list(
-      fachabteilung = leistungsangebot_fachabteilung,
-      ambulanz = leistungsangebot_ambulanz
-    ))
   }
 
 
@@ -463,26 +428,10 @@ read_qualitaetsberichte_xml_fachabteilungsschluessel <-
         return(tib)
       }
 
-    xml_data <- read_xml(file_path)
-    mehrere_standorte <- length(xml_children(xml_find_all(
-      xml_data,
-      "//Krankenhaus/Mehrere_Standorte"
-    ))) ==
-      2
-    kh_path <- ifelse(
-      mehrere_standorte,
-      "Standortkontaktdaten",
-      "Krankenhauskontaktdaten"
-    )
-
-    IK <- xml_text(xml_find_all(xml_data, glue::glue("//{kh_path}/IK")))
-    Standortnummer <- xml_text(xml_find_all(
-      xml_data,
-      glue::glue("//Standortnummer")
-    ))
+    base_info <- get_xml_base_info(file_path)
 
     fachabteilungsschluessel <- xml_find_all(
-      xml_data,
+      base_info$xml_data,
       "//Fachabteilungsschluessel"
     )
     tmp <- lapply(fachabteilungsschluessel, xml_children)
@@ -490,8 +439,8 @@ read_qualitaetsberichte_xml_fachabteilungsschluessel <-
     # tmp <- lapply(tmp, function(x) tibble(!!!setNames(xml_text(x), xml_name(x))))
 
     fachabteilungsschluesselliste <- bind_cols(
-      IK = IK,
-      Standortnummer = Standortnummer,
+      IK = base_info$IK,
+      Standortnummer = base_info$Standortnummer,
       bind_rows(tmp)
     )
 
