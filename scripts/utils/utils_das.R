@@ -2,16 +2,25 @@
 # Note: This assumes scripts are run from the repository root
 source("scripts/utils/utils_xml.R")
 
-extract_html_element <-
-  function(x, Element) {
-    x <- lapply(x, function(x) {
-      html_elements(x, Element) |> html_text()
-    })
-    x[lengths(x) == 0] <- NA
-    return(x)
-  }
+#' get_das_base_info
+#' Extracts common base information from DAS (Datenaustauschs) XML files.
+#' Used by DAS reader functions.
+#'
+#' @param file_path character, path to DAS XML file
+#' @return list with xml_data, IK, and Standortnummer
+get_das_base_info <- function(file_path) {
+  xml_data <- read_xml(file_path)
+  IK <- html_element(xml_data, "IK") |> html_text()
+  Standortnummer <- html_element(xml_data, "Standortnummer") |> html_text()
+  
+  list(
+    xml_data = xml_data,
+    IK = IK,
+    Standortnummer = Standortnummer
+  )
+}
 
-extract_nested_html_element <-
+extract_html_element <-
   function(x, Element) {
     x <- lapply(x, function(x) {
       html_elements(x, Element) |> html_text()
@@ -98,17 +107,12 @@ extract_nested_html_element <- function(x, Element) {
 
 read_qualitaetsberichte_das_dokumentationsraten <-
   function(file_path) {
-    # Read XML file
-    neue_Dokdaten_xml <- read_xml(file_path)
-
-    # Extract IK and Standortnummer
-    IK_temp <- html_element(neue_Dokdaten_xml, "IK") |> html_text()
-    Standortnummer_temp <- html_element(neue_Dokdaten_xml, "Standortnummer") |>
-      html_text()
+    # Read XML file and extract base info
+    base_info <- get_das_base_info(file_path)
 
     # Extract Leistungsbereich elements
     Leistungsbereich <- html_elements(
-      neue_Dokdaten_xml,
+      base_info$xml_data,
       xpath = ".//Leistungsbereich_DeQS"
     )
 
@@ -126,8 +130,8 @@ read_qualitaetsberichte_das_dokumentationsraten <-
     # Create data frame with all elements
     table_Dokdaten <- Leistungsbereich |>
       mutate(
-        IK = IK_temp,
-        Standortnummer = Standortnummer_temp,
+        IK = base_info$IK,
+        Standortnummer = base_info$Standortnummer,
         Kuerzel = extract_html_element(Leistungsbereich, "Kuerzel"),
         Bezeichnung = extract_html_element(Leistungsbereich, "Bezeichnung"),
         Fallzahl = extract_html_element(Leistungsbereich, "Fallzahl"),
@@ -175,17 +179,12 @@ unnest_and_convert_qualitaetsberichte_das_dokumentationsraten <-
 
 read_qualitaetsberichte_das_ergebnis <-
   function(file_path) {
-    # Read XML file
-    neue_Dokdaten_xml <- read_xml(file_path)
-
-    # Extract IK and Standortnummer
-    IK_temp <- html_element(neue_Dokdaten_xml, "IK") |> html_text()
-    Standortnummer_temp <- html_element(neue_Dokdaten_xml, "Standortnummer") |>
-      html_text()
+    # Read XML file and extract base info
+    base_info <- get_das_base_info(file_path)
 
     # Extract Leistungsbereich elements
     Ergebnis <- html_elements(
-      neue_Dokdaten_xml,
+      base_info$xml_data,
       xpath = ".//QS-Ergebnis"
     )
 
@@ -203,8 +202,8 @@ read_qualitaetsberichte_das_ergebnis <-
     # Create data frame with all elements
     table_Ergebnisse <- Ergebnis |>
       mutate(
-        IK = IK_temp,
-        Standortnummer = Standortnummer_temp,
+        IK = base_info$IK,
+        Standortnummer = base_info$Standortnummer,
         Kuerzel_Leistungsbereich = extract_html_element(
           Ergebnis,
           "Kuerzel_Leistungsbereich"
