@@ -10,9 +10,9 @@ source("scripts/utils/utils_xml.R")
 #' @return list with xml_data, IK, and Standortnummer
 get_das_base_info <- function(file_path) {
   xml_data <- read_xml(file_path)
-  IK <- html_element(xml_data, "IK") |> html_text()
-  Standortnummer <- html_element(xml_data, "Standortnummer") |> html_text()
-  
+  IK <- xml_find_first(xml_data, ".//IK") |> xml_text()
+  Standortnummer <- xml_find_first(xml_data, ".//Standortnummer") |> xml_text()
+
   list(
     xml_data = xml_data,
     IK = IK,
@@ -20,19 +20,19 @@ get_das_base_info <- function(file_path) {
   )
 }
 
-extract_html_element <-
+extract_xml_element <-
   function(x, Element) {
     x <- lapply(x, function(x) {
-      html_elements(x, Element) |> html_text()
+      xml_find_all(x, Element) |> xml_text()
     })
     x[lengths(x) == 0] <- NA
     return(x)
   }
 
-extract_nested_html_element <- function(x, Element) {
+extract_nested_xml_element <- function(x, Element) {
   x <- lapply(x, function(x) {
     # Get the main element
-    element_node <- html_elements(x, Element)
+    element_node <- xml_find_all(x, Element)
 
     if (length(element_node) == 0) {
       return(NA)
@@ -43,7 +43,7 @@ extract_nested_html_element <- function(x, Element) {
 
     if (length(child_nodes) == 0) {
       # If no children, check if there's text directly in the element
-      element_text <- html_text(element_node)
+      element_text <- xml_text(element_node)
       if (length(element_text) > 0 && element_text != "") {
         # Return the text as a named value using the element name
         result <- list()
@@ -62,7 +62,7 @@ extract_nested_html_element <- function(x, Element) {
 
       # Extract text from each child node
       for (i in seq_along(child_nodes)) {
-        child_text <- html_text(child_nodes[i])
+        child_text <- xml_text(child_nodes[i])
         # Handle empty elements
         if (length(child_text) == 0 || child_text == "") {
           child_text <- NA
@@ -111,9 +111,9 @@ read_qualitaetsberichte_das_dokumentationsraten <-
     base_info <- get_das_base_info(file_path)
 
     # Extract Leistungsbereich elements
-    Leistungsbereich <- html_elements(
+    Leistungsbereich <- xml_find_all(
       base_info$xml_data,
-      xpath = ".//Leistungsbereich_DeQS"
+      ".//Leistungsbereich_DeQS"
     )
 
     # Convert to tibble
@@ -132,14 +132,14 @@ read_qualitaetsberichte_das_dokumentationsraten <-
       mutate(
         IK = base_info$IK,
         Standortnummer = base_info$Standortnummer,
-        Kuerzel = extract_html_element(Leistungsbereich, "Kuerzel"),
-        Bezeichnung = extract_html_element(Leistungsbereich, "Bezeichnung"),
-        Fallzahl = extract_html_element(Leistungsbereich, "Fallzahl"),
-        Dokumentationsrate = extract_html_element(
+        Kuerzel = extract_xml_element(Leistungsbereich, "Kuerzel"),
+        Bezeichnung = extract_xml_element(Leistungsbereich, "Bezeichnung"),
+        Fallzahl = extract_xml_element(Leistungsbereich, "Fallzahl"),
+        Dokumentationsrate = extract_xml_element(
           Leistungsbereich,
           "Dokumentationsrate"
         ),
-        Anzahl_Datensaetze_Standort = extract_html_element(
+        Anzahl_Datensaetze_Standort = extract_xml_element(
           Leistungsbereich,
           "Anzahl_Datensaetze_Standort"
         )
@@ -182,10 +182,10 @@ read_qualitaetsberichte_das_ergebnis <-
     # Read XML file and extract base info
     base_info <- get_das_base_info(file_path)
 
-    # Extract Leistungsbereich elements
-    Ergebnis <- html_elements(
+    # Extract QS-Ergebnis elements
+    Ergebnis <- xml_find_all(
       base_info$xml_data,
-      xpath = ".//QS-Ergebnis"
+      ".//QS-Ergebnis"
     )
 
     # Convert to tibble
@@ -194,7 +194,7 @@ read_qualitaetsberichte_das_ergebnis <-
       function(x) tibble(Ergebnis = list(x))
     ))
 
-    # If no Leistungsbereiche found, return empty tibble
+    # If no Ergebnisse found, return empty tibble
     if (nrow(Ergebnis) == 0) {
       return(tibble())
     }
@@ -204,47 +204,47 @@ read_qualitaetsberichte_das_ergebnis <-
       mutate(
         IK = base_info$IK,
         Standortnummer = base_info$Standortnummer,
-        Kuerzel_Leistungsbereich = extract_html_element(
+        Kuerzel_Leistungsbereich = extract_xml_element(
           Ergebnis,
           "Kuerzel_Leistungsbereich"
         ),
-        Bezeichnung_Leistungsbereich = extract_html_element(
+        Bezeichnung_Leistungsbereich = extract_xml_element(
           Ergebnis,
           "Bezeichnung_Leistungsbereich"
         ),
-        Ergebnis_ID = extract_html_element(Ergebnis, "Ergebnis_ID"),
-        Bezeichnung_Ergebnis = extract_html_element(
+        Ergebnis_ID = extract_xml_element(Ergebnis, "Ergebnis_ID"),
+        Bezeichnung_Ergebnis = extract_xml_element(
           Ergebnis,
           "Bezeichnung_Ergebnis"
         ),
-        Art_des_Wertes = extract_html_element(Ergebnis, "Art_des_Wertes"),
-        Bezug_zum_Verfahren = extract_html_element(
+        Art_des_Wertes = extract_xml_element(Ergebnis, "Art_des_Wertes"),
+        Bezug_zum_Verfahren = extract_xml_element(
           Ergebnis,
           "Bezug_zum_Verfahren"
         ),
-        Fachlicher_Hinweis_IQTIG = extract_html_element(
+        Fachlicher_Hinweis_IQTIG = extract_xml_element(
           Ergebnis,
           "Fachlicher_Hinweis_IQTIG"
         ),
-        Einheit = extract_html_element(Ergebnis, "Einheit"),
-        Bundesergebnis = extract_html_element(Ergebnis, "Bundesergebnis"),
-        Vertrauensbereich_Bundesweit = extract_nested_html_element(
+        Einheit = extract_xml_element(Ergebnis, "Einheit"),
+        Bundesergebnis = extract_xml_element(Ergebnis, "Bundesergebnis"),
+        Vertrauensbereich_Bundesweit = extract_nested_xml_element(
           Ergebnis,
           "Vertrauensbereich_Bundesweit"
         ),
-        Rechnerisches_Ergebnis = extract_html_element(
+        Rechnerisches_Ergebnis = extract_xml_element(
           Ergebnis,
           "Rechnerisches_Ergebnis"
         ),
-        Vertrauensbereich_Krankenhaus = extract_nested_html_element(
+        Vertrauensbereich_Krankenhaus = extract_nested_xml_element(
           Ergebnis,
           "Vertrauensbereich_Krankenhaus"
         ),
-        Fallzahl = extract_nested_html_element(
+        Fallzahl = extract_nested_xml_element(
           Ergebnis,
           "Fallzahl"
         ),
-        Ergebnis_Bewertung = extract_nested_html_element(
+        Ergebnis_Bewertung = extract_nested_xml_element(
           Ergebnis,
           "Ergebnis_Bewertung"
         )

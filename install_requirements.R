@@ -11,7 +11,6 @@ packages <- c(
 
   # XML/HTML parsing
   "xml2",
-  "rvest",
 
   # Utilities
   "glue",

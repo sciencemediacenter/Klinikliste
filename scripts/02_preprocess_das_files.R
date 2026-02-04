@@ -8,7 +8,6 @@
 library(tidyverse)
 library(xml2)
 library(glue)
-library(rvest)
 library(furrr)
 library(tictoc)
 
