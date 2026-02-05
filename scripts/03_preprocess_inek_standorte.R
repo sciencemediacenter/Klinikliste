@@ -35,10 +35,10 @@ Krankenhausverzeichnis <- read_Krankenhausverzeichnis(
   Dateipfad = PATH_INEK_RAW
 )
 
+
 # Save results
 save(
-  Krankenhausverzeichnis$Krankenhaeuser,
-  Krankenhausverzeichnis$Standorte,
+  Krankenhausverzeichnis,
   file = file.path(PATH_INEK_OUTPUT, "InEK_Krankenhausliste.RData")
 )
 
