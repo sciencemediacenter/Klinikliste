@@ -88,28 +88,32 @@ read_Krankenhausverzeichnis <-
           Registriernummer
         )
       ) |>
-      mutate_at(
-        .vars = c(
-          "GültigVon",
-          "LetzteÄnderung",
-          "GültigBis",
-          "Einrichtung_GültigVon",
-          "Einrichtung_GültigBis",
-          "Einrichtung_AbrechnungsIK_GültigVon",
-          "Einrichtung_AbrechnungsIK_GültigBis",
-          "Einrichtung_Betriebsstättennummer_GültigVon",
-          "Einrichtung_Betriebsstättennummer_GültigBis"
-        ),
-        .funs = as.Date
+      mutate(
+        across(
+          c(
+            GültigVon,
+            LetzteÄnderung,
+            GültigBis,
+            Einrichtung_GültigVon,
+            Einrichtung_GültigBis,
+            Einrichtung_AbrechnungsIK_GültigVon,
+            Einrichtung_AbrechnungsIK_GültigBis,
+            Einrichtung_Betriebsstättennummer_GültigVon,
+            Einrichtung_Betriebsstättennummer_GültigBis
+          ),
+          as.Date
+        )
       ) |>
-      mutate_at(
-        .vars = c(
-          "GeoAdresse_Längengrad",
-          "GeoAdresse_Breitengrad",
-          "Einrichtung_GeoAdresse_Längengrad",
-          "Einrichtung_GeoAdresse_Breitengrad"
-        ),
-        .funs = as.numeric
+      mutate(
+        across(
+          c(
+            GeoAdresse_Längengrad,
+            GeoAdresse_Breitengrad,
+            Einrichtung_GeoAdresse_Längengrad,
+            Einrichtung_GeoAdresse_Breitengrad
+          ),
+          as.numeric
+        )
       ) |>
       select(-N, -Einrichtung_id) |>
       filter(Einrichtung_Einrichtungstyp == "00") |> # Standorte, keine Ambulanzen etc.
