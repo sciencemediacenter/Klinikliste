@@ -12,11 +12,11 @@ PATH_DATA_RAW <- "data-raw"
 PATH_DATA_OUTPUT <- "data"
 
 # Parallel processing settings
-# Uses all available cores minus 2 to keep system responsive
-N_CORES <- parallel::detectCores() - 2
+# Uses all available cores minus 4 to keep system responsive
+N_CORES <- parallel::detectCores() - 4
 
 # Derived paths (don't edit these)
 PATH_QB_RAW <- file.path(PATH_DATA_RAW, "Qualitaetsberichte")
-PATH_QB_OUTPUT <- file.path(PATH_DATA_OUTPUT, "Qualitaetsberichte", "results")
+PATH_QB_OUTPUT <- file.path(PATH_DATA_OUTPUT, "Qualitaetsberichte", JAHR)
 PATH_INEK_RAW <- file.path(PATH_DATA_RAW, "Standortliste_InEK")
 PATH_INEK_OUTPUT <- file.path(PATH_DATA_OUTPUT, "Standortliste_InEK")
