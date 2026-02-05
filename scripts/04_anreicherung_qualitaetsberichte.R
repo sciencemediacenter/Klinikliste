@@ -24,6 +24,9 @@ source("config.R")
 load(file.path(PATH_INEK_OUTPUT, "InEK_Krankenhausliste.RData"))
 load(file.path(PATH_QB_OUTPUT, glue("Qualitaetsdaten_{JAHR}.Rdata")))
 
+Standorte <- Krankenhausverzeichnis$Standorte
+Krankenhaeuser <- Krankenhausverzeichnis$Krankenhaeuser
+
 # Standardize column names
 colnames(qualitaetsdaten) <- tools::toTitleCase(colnames(qualitaetsdaten))
 
@@ -57,7 +60,9 @@ unmatched <- Standorte_Notfallstufe |>
   )
 
 if (nrow(unmatched) > 0) {
-  warning(glue("{nrow(unmatched)} locations with emergency levels could not be matched to InEK data"))
+  warning(glue(
+    "{nrow(unmatched)} locations with emergency levels could not be matched to InEK data"
+  ))
 }
 
 # Remove entries without InEK match
@@ -73,7 +78,9 @@ missing_notfallstufe <- Standorte_Notfallstufe |>
   )
 
 if (nrow(missing_notfallstufe) > 0) {
-  message(glue("{nrow(missing_notfallstufe)} active hospital locations have no emergency level assigned"))
+  message(glue(
+    "{nrow(missing_notfallstufe)} active hospital locations have no emergency level assigned"
+  ))
 }
 
 # Save results
