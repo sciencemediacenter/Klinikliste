@@ -3,9 +3,11 @@
 # nur ein Schema hat, sind beim anderen leer (NA): z. B. PSY, DRG,
 # Fachabteilungen nur in 2.1.0, Gültigkeit von AbrechnungsIK und
 # Betriebsstättennummer nur in 1.2.0.
+# nur_standorte = FALSE (neu): alle Einrichtungen, nicht nur Typ "00"
 read_Krankenhausverzeichnis <-
   function(Verzeichnisdatum,
-           Dateipfad) {
+           Dateipfad,
+           nur_standorte = TRUE) {
     # Hilfsfunktionen (neu, für das Einlesen per XPath) --------------------
 
     # Text des ersten Treffers je Knoten, leer -> NA
@@ -137,7 +139,7 @@ read_Krankenhausverzeichnis <-
         across(c(contains("GültigVon"), contains("GültigBis"), LetzteÄnderung), as.Date),
         across(c(ends_with("Längengrad"), ends_with("Breitengrad")), as.numeric)
       ) |>
-      filter(Einrichtung_Einrichtungstyp == "00") |> # Standorte, keine Ambulanzen etc.
+      filter(!nur_standorte | Einrichtung_Einrichtungstyp == "00") |> # Standorte, keine Ambulanzen etc.
       mutate(
         gueltiger_eintrag = any(
           is.na(Einrichtung_GültigBis) | Einrichtung_GültigBis > today()
